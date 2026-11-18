@@ -576,16 +576,34 @@ function torchModel(tex: string, facing?: string): ModelDef {
   return model(rotateElements([el], turnsFor(facing)));
 }
 
+/**
+ * Liquids. Source blocks (level 0) are what you have to place, so they stand
+ * out: textured, at full strength, with a bright frame around the top of every
+ * block. Flowing liquid (levels 1-7, or falling) is drawn as a faint, flat,
+ * translucent volume whose height follows its level.
+ */
 function liquidModel(n: string, level: number): ModelDef {
-  const h = level === 0 || level >= 8 ? (level >= 8 ? 16 : 14) : Math.max(2, Math.round(((8 - level) / 9) * 16));
-  const tex = n === 'lava' ? 'lava_still' : 'water_still';
-  const el = box([0, 0, 0], [16, h, 16], tex);
-  if (h < 16) delete el.faces.up?.cull;
-  return model([el], {
-    layer: n === 'water' ? RenderLayer.Translucent : RenderLayer.Solid,
-    cullGroup: n,
-    color: n === 'water' ? '3f76e4a0' : undefined,
-  });
+  const lava = n === 'lava';
+  const source = level === 0;
+  const h = source ? 14 : level >= 8 ? 16 : Math.max(2, Math.round(((8 - level) / 9) * 16));
+  if (!source) {
+    const el = box([0, 0, 0], [16, h, 16], lava ? 'lava_flow' : 'water_flow');
+    if (h < 16) delete el.faces.up?.cull;
+    return model([el], { layer: RenderLayer.Translucent, cullGroup: n, color: lava ? 'ff8a2a8c' : '8cbcff4c' });
+  }
+  const el = box([0, 0, 0], [16, h, 16], lava ? 'lava_still' : 'water_still');
+  delete el.faces.up?.cull;
+  // Frame on top of the source block (a pseudo texture with a fixed flat color).
+  const marker = lava ? 'webmatica_source_lava' : 'webmatica_source_water';
+  const y = h + 0.5;
+  const w = 1.5;
+  const frame = [
+    ...flatRect(marker, 0, 0, 16, w, y, [0, 0, 16, 16]),
+    ...flatRect(marker, 0, 16 - w, 16, 16, y, [0, 0, 16, 16]),
+    ...flatRect(marker, 0, w, w, 16 - w, y, [0, 0, 16, 16]),
+    ...flatRect(marker, 16 - w, w, 16, 16 - w, y, [0, 0, 16, 16]),
+  ];
+  return model([el], { layer: lava ? RenderLayer.Solid : RenderLayer.Translucent, cullGroup: n, quads: frame });
 }
 
 function cropTexture(n: string, age: number): string {

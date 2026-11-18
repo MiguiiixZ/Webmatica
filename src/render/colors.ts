@@ -39,7 +39,9 @@ const EXACT: Record<string, string> = {
   short_dry_grass: 'b49a5c', tall_dry_grass: 'b49a5c', cactus_flower: 'e07aa8', closed_eyeblossom: '6d6a63', open_eyeblossom: 'e7a03a',
   torchflower: 'c88a3d', pitcher_plant_top: '6e8ab3', pitcher_plant_bottom: '6a8f45', pink_petals: 'e9a5c5', sniffer_egg_not_cracked_top: 'a64a3a',
   decorated_pot: '985b44', suspicious_sand: 'dad09f', suspicious_gravel: '847e7c', chiseled_bookshelf_side: '7a5c3a', chiseled_bookshelf_top: 'b4935a',
-  frogspawn: '6c5f5ac0', water_still: '3f76e4a0', lava_still: 'd4601a', obsidian: '0f0b19', crying_obsidian: '210a3c',
+  frogspawn: '6c5f5ac0',
+  // Markers drawn around the top of liquid source blocks.
+  webmatica_source_water: 'd8f0ffff', webmatica_source_lava: 'ffe24aff', water_still: '3f76e4a0', lava_still: 'd4601a', obsidian: '0f0b19', crying_obsidian: '210a3c',
   iron_chain: '3d4250', chain: '3d4250', copper_chain: 'a65f42', copper_lantern: 'b06a45', copper_torch: 'b06a45', copper_bulb: 'b56c4e',
   copper_grate: 'c06c50', chiseled_copper: 'b86650', dried_ghast: '9b9893',
 };
