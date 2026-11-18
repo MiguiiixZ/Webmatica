@@ -1,22 +1,23 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { getPackInfo, installPack, removePack, restorePack, type PackInfo } from '../render/resourcePack';
+import { addPack, getPackInfos, movePack, removeAllPacks, removePackAt, restorePack, type PackInfo } from '../render/resourcePack';
 import { S } from './strings';
 
 export function TexturePackSection() {
   const input = useRef<HTMLInputElement>(null);
-  const [info, setInfo] = useState<PackInfo | null>(getPackInfo());
+  const [packs, setPacks] = useState<PackInfo[]>(getPackInfos());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void restorePack().then((i) => i && setInfo(i));
+    void restorePack().then(setPacks);
   }, []);
 
-  const onFile = async (f: File) => {
+  const run = async (fn: () => Promise<PackInfo[] | void>) => {
     setBusy(true);
     setError(null);
     try {
-      setInfo(await installPack(f));
+      const r = await fn();
+      setPacks(r ?? getPackInfos());
     } catch (e) {
       setError(`${S.packError}: ${(e as Error).message}`);
     } finally {
@@ -27,29 +28,43 @@ export function TexturePackSection() {
   return (
     <div class="section">
       <h4>{S.texturePack}</h4>
-      <div>{info ? S.packLoaded(info.name, info.textures) : S.texturePackDefault}</div>
-      {info && (
-        <div class="dim">
-          {info.hasModels ? S.packModelsUsed : S.packModelsBuiltin}
-          {info.hasLanguage ? ` ${S.packNamesUsed}` : ''}
-          {info.warnings.map((w) => (
-            <div key={w}>⚠ {w}</div>
+      {packs.length === 0 && <div>{S.texturePackDefault}</div>}
+      {packs.length > 0 && (
+        <>
+          <div class="dim">{S.packStackHint}</div>
+          {packs.map((p, i) => (
+            <div class="row" key={`${p.name}-${i}`} style={{ flexWrap: 'nowrap' }}>
+              <div class="grow" style={{ minWidth: 0 }}>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {i === 0 ? '▲ ' : ''}
+                  {S.packLoaded(p.name, p.textures)}
+                </div>
+                <div class="dim">
+                  {p.hasModels ? S.packModelsUsed : ''}
+                  {p.hasLanguage ? ` ${S.packNamesUsed}` : ''}
+                  {p.warnings.map((w) => ` ⚠ ${w}`).join('')}
+                </div>
+              </div>
+              <button class="btn small icon" disabled={busy || i === 0} title={S.packUp} onClick={() => run(() => movePack(i, -1))}>
+                ↑
+              </button>
+              <button class="btn small icon" disabled={busy || i === packs.length - 1} title={S.packDown} onClick={() => run(() => movePack(i, 1))}>
+                ↓
+              </button>
+              <button class="btn small icon ghost" disabled={busy} title={S.remove} onClick={() => run(() => removePackAt(i))}>
+                ✕
+              </button>
+            </div>
           ))}
-        </div>
+          <div class="dim">{S.packBundledLast}</div>
+        </>
       )}
       <div class="btn-row">
         <button class="btn small" disabled={busy} onClick={() => input.current?.click()}>
-          {busy ? S.packLoading : S.loadPack}
+          {busy ? S.packLoading : packs.length ? S.addPack : S.loadPack}
         </button>
-        {info && (
-          <button
-            class="btn small ghost"
-            disabled={busy}
-            onClick={async () => {
-              await removePack();
-              setInfo(null);
-            }}
-          >
+        {packs.length > 0 && (
+          <button class="btn small ghost" disabled={busy} onClick={() => run(removeAllPacks)}>
             {S.removePack}
           </button>
         )}
@@ -63,7 +78,7 @@ export function TexturePackSection() {
         style={{ display: 'none' }}
         onChange={(e) => {
           const f = (e.target as HTMLInputElement).files?.[0];
-          if (f) void onFile(f);
+          if (f) void run(() => addPack(f));
           (e.target as HTMLInputElement).value = '';
         }}
       />

@@ -12,7 +12,8 @@ interface Props {
   nextLayer: number | null;
   setLayer: (patch: Partial<LayerState>) => void;
   stepLayer: (delta: number) => void;
-  toggleDone: (layer: number) => void;
+  doneAndNext: () => void;
+  undoDone: () => void;
   update: (patch: Partial<ProjectState> | ((p: ProjectState) => Partial<ProjectState>)) => void;
 }
 
@@ -24,7 +25,7 @@ const MODE_LABELS: [LayerMode, string][] = [
   ['range', S.modeRange],
 ];
 
-export function LayerPanel({ project, schematic, counts, doneSet, nextLayer, setLayer, stepLayer, toggleDone, update }: Props) {
+export function LayerPanel({ project, schematic, counts, doneSet, nextLayer, setLayer, stepLayer, doneAndNext, undoDone, update }: Props) {
   const l = project.layer;
   const len = schematic.size[l.axis];
   const c = counts[l.axis];
@@ -71,17 +72,25 @@ export function LayerPanel({ project, schematic, counts, doneSet, nextLayer, set
           </div>
         </div>
 
-        {l.mode !== 'all' && l.mode !== 'range' && (
+        {l.mode !== 'range' && (
           <>
             <div class="layer-big">
+              <button class="btn" onClick={undoDone} title={S.undoDoneHint} aria-label={S.undoDone}>
+                ↶ {S.undoDone}
+              </button>
               <button class="btn icon" onClick={() => stepLayer(-1)} title={`${S.layerDown} (PageDown)`} aria-label={S.layerDown}>
                 −
               </button>
-              <div class="num mono">{`${axisName} ${cur}`}</div>
+              <div class="num mono" title={S.layerOf(cur + 1, len)}>
+                {l.mode === 'all' ? '–' : `${axisName} ${cur}`}
+                {l.mode !== 'all' && doneSet.has(cur) && <span style={{ color: 'var(--ok)', fontSize: 14 }}> ✓</span>}
+              </div>
               <button class="btn icon" onClick={() => stepLayer(1)} title={`${S.layerUp} (PageUp)`} aria-label={S.layerUp}>
                 +
               </button>
-              <span class="dim">{S.layerOf(cur + 1, len)}</span>
+              <button class="btn primary" onClick={doneAndNext} disabled={nextLayer === null && doneSet.has(cur)} title={S.doneNextHint} aria-label={S.doneNext}>
+                {S.doneNext} ✓
+              </button>
             </div>
             <input
               type="range"
@@ -131,19 +140,6 @@ export function LayerPanel({ project, schematic, counts, doneSet, nextLayer, set
 
       <div class="section">
         <h4>{S.progress}</h4>
-        <div class="row">
-          <button class={`btn${doneSet.has(cur) ? ' active' : ''}`} onClick={() => toggleDone(cur)} disabled={l.mode === 'all'} title="D">
-            {doneSet.has(cur) ? `✓ ${S.layerDone}` : S.markDone}
-          </button>
-          <button
-            class="btn"
-            disabled={nextLayer === null}
-            onClick={() => nextLayer !== null && setLayer({ current: nextLayer, mode: l.mode === 'all' ? 'below' : l.mode })}
-            title="N"
-          >
-            {S.goToNext}
-          </button>
-        </div>
         <div class="progress-bar">
           <div style={{ width: pct }} />
         </div>

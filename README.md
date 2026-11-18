@@ -28,7 +28,8 @@ exactly where you left them.
 - Modes: all layers, single layer, up to layer N, from layer N up, and a range. Axis Y (default), X or Z.
 - `PageUp`/`PageDown` or `]`/`[` to move, a slider, and a clickable layer strip.
 - Dim layers below, highlight the current layer, highlight the next layer to build.
-- Mark layers as done (`D`), jump to the next unfinished layer (`N`), percentage complete — saved locally.
+- **Done** (`D`) marks the current layer as finished and jumps to the next one to build; **Undo** (`U`/`Backspace`)
+  goes back to the last finished layer and unmarks it. Percentage complete and a layer strip — saved locally.
 
 **Material List**
 - Grouped by item with the exact rules Litematica uses (doors/beds/tall plants counted once, double slabs ×2,
@@ -52,7 +53,8 @@ exactly where you left them.
 | `PageDown` / `[` | Layer down |
 | `Home` / `End` | First / last layer |
 | `L` | Cycle layer mode |
-| `D` | Mark current layer as done |
+| `D` | Mark layer as done and go to the next one |
+| `U` / `Backspace` | Undo: back to the last finished layer |
 | `N` | Go to next layer to build |
 | `C` | Orbit / free camera |
 | `W A S D`, `Space` / `Shift` | Move in free camera |
@@ -87,6 +89,10 @@ To see the original look, open **Settings → Texture pack → Load client.jar o
 Minecraft `client.jar` (e.g. `.minecraft/versions/1.21.1/1.21.1.jar`) or any resource pack `.zip`. It is processed
 entirely in your browser and stored only on your device; Webmatica never uploads or redistributes it. With a
 `client.jar`, real block models and the game's English block names are used too.
+
+Packs can be **stacked** like in the game: load your `client.jar` first, then add resource packs on top. The pack
+on top wins, and anything it does not include comes from the packs below (then from the bundled textures). The start
+screen explains where to find `client.jar` and loads it with one click.
 
 Partial resource packs work too, including redstone readability packs: missing textures fall back to the bundled
 ones, and models that inherit from standard templates the pack does not ship (`cube_all`, `orientable`, stairs,

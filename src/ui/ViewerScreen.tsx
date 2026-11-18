@@ -282,17 +282,56 @@ export default function ViewerScreen(p: Props) {
     [schematic, setLayer],
   );
 
-  const toggleDone = useCallback(
-    (layer: number) =>
-      update((pr) => {
-        const key = String(pr.layer.axis);
-        const set = new Set(pr.doneLayers[key] ?? []);
-        if (set.has(layer)) set.delete(layer);
-        else set.add(layer);
-        return { doneLayers: { ...pr.doneLayers, [key]: [...set].sort((a, b) => a - b) } };
-      }),
-    [update],
-  );
+  /** Marks the current layer as done and moves to the next unfinished layer above it. */
+  const doneAndNext = useCallback(() => {
+    update((pr) => {
+      if (!schematic || !counts) return {};
+      const axisKey = String(pr.layer.axis);
+      const len = schematic.size[pr.layer.axis];
+      const c = counts[pr.layer.axis];
+      const cur = Math.min(pr.layer.current, len - 1);
+      const set = new Set(pr.doneLayers[axisKey] ?? []);
+      set.add(cur);
+      let next = cur;
+      for (let i = cur + 1; i < len; i++) {
+        if (c[i] > 0 && !set.has(i)) {
+          next = i;
+          break;
+        }
+      }
+      if (next === cur) for (let i = 0; i < len; i++) if (c[i] > 0 && !set.has(i)) {
+        next = i;
+        break;
+      }
+      return {
+        doneLayers: { ...pr.doneLayers, [axisKey]: [...set].sort((a, b) => a - b) },
+        layer: { ...pr.layer, current: next, mode: pr.layer.mode === 'all' ? 'below' : pr.layer.mode },
+      };
+    });
+  }, [update, schematic, counts]);
+
+  /** Undo: unmark the current layer if it is done, otherwise go back one layer and unmark it. */
+  const undoDone = useCallback(() => {
+    update((pr) => {
+      const axisKey = String(pr.layer.axis);
+      const set = new Set(pr.doneLayers[axisKey] ?? []);
+      let target = pr.layer.current;
+      if (!set.has(target)) {
+        // Go back to the nearest finished layer below.
+        target = -1;
+        for (let i = pr.layer.current - 1; i >= 0; i--) if (set.has(i)) {
+          target = i;
+          break;
+        }
+        if (target < 0) target = Math.max(0, pr.layer.current - 1);
+      }
+      set.delete(target);
+      return {
+        doneLayers: { ...pr.doneLayers, [axisKey]: [...set].sort((a, b) => a - b) },
+        layer: { ...pr.layer, current: target, mode: pr.layer.mode === 'all' ? 'below' : pr.layer.mode },
+      };
+    });
+  }, [update]);
 
   // ---- Pointer: hover and measure -------------------------------------------
   const pending = useRef<{ x: number; y: number } | null>(null);
@@ -361,7 +400,12 @@ export default function ViewerScreen(p: Props) {
           break;
         case 'd':
         case 'D':
-          if (pr && v?.cameraMode !== 'fly') toggleDone(pr.layer.current);
+          if (pr && v?.cameraMode !== 'fly') doneAndNext();
+          break;
+        case 'u':
+        case 'U':
+        case 'Backspace':
+          if (pr) undoDone();
           break;
         case 'n':
         case 'N':
@@ -414,7 +458,7 @@ export default function ViewerScreen(p: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [stepLayer, setLayer, toggleDone, nextLayer, schematic, leftOpen, rightOpen, p.setSettings]);
+  }, [stepLayer, setLayer, doneAndNext, undoDone, nextLayer, schematic, leftOpen, rightOpen, p.setSettings]);
 
   // ---- Render -----------------------------------------------------------------------
   const range = project && schematic ? visibleRange(project.layer, layerLen) : null;
@@ -500,7 +544,8 @@ export default function ViewerScreen(p: Props) {
                 nextLayer={nextLayer}
                 setLayer={setLayer}
                 stepLayer={stepLayer}
-                toggleDone={toggleDone}
+                doneAndNext={doneAndNext}
+                undoDone={undoDone}
                 update={update}
               />
             </div>

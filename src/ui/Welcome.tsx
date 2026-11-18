@@ -1,4 +1,5 @@
-import { useRef, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import { db } from '../storage/db';
 import type { ProjectState } from '../app/project';
 import { SUPPORTED_EXTENSIONS } from '../parser/extensions';
 import { S } from './strings';
@@ -107,6 +108,8 @@ export function Welcome(p: Props) {
           ))}
         </div>
 
+        <VanillaCard />
+
         <div class="recent">
           <h3>{S.recentTitle}</h3>
           {p.recent.length === 0 && <div class="dim">{S.recentEmpty}</div>}
@@ -147,6 +150,65 @@ export function Welcome(p: Props) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Explains how to get the original look with the user's own client.jar (loaded lazily). */
+function VanillaCard() {
+  const input = useRef<HTMLInputElement>(null);
+  const [names, setNames] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    // Only the names: the packs themselves are loaded when a schematic is opened.
+    void db.get<string[]>('packs', 'stackNames').then((n) => setNames(n?.length ? n.slice().reverse().join(' + ') : null));
+  }, []);
+  return (
+    <div class="recent-item" style={{ display: 'block' }}>
+      <div class="title">{S.vanillaTitle}</div>
+      {names ? (
+        <div class="dim">{S.vanillaLoaded(names)}</div>
+      ) : (
+        <>
+          <div class="muted" style={{ margin: '4px 0 6px' }}>{S.vanillaText}</div>
+          <div class="dim">{S.vanillaWhere}</div>
+          <dl class="kv dim" style={{ margin: '4px 0 8px' }}>
+            {S.vanillaPaths.map(([os, path]) => (
+              <>
+                <dt>{os}</dt>
+                <dd class="mono">{path}</dd>
+              </>
+            ))}
+          </dl>
+          <button class="btn" disabled={busy} onClick={() => input.current?.click()}>
+            {busy ? S.packLoading : S.vanillaButton}
+          </button>
+          {error && <div class="err">{error}</div>}
+        </>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept=".jar,.zip"
+        style={{ display: 'none' }}
+        onChange={async (e) => {
+          const f = (e.target as HTMLInputElement).files?.[0];
+          (e.target as HTMLInputElement).value = '';
+          if (!f) return;
+          setBusy(true);
+          setError(null);
+          try {
+            const m = await import('../render/resourcePack');
+            const packs = await m.addPack(f);
+            setNames(packs.map((x) => x.name).join(' + '));
+          } catch (err) {
+            setError(`${S.packError}: ${(err as Error).message}`);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
     </div>
   );
 }

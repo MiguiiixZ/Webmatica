@@ -131,7 +131,8 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; pad
 .kv dd { margin: 0; overflow-wrap: anywhere; }
 
 .layer-big { display: flex; align-items: center; gap: 8px; }
-.layer-big .num { font-size: 22px; font-weight: 600; min-width: 64px; text-align: center; }
+.layer-big { flex-wrap: nowrap; gap: 6px; }
+.layer-big .num { font-size: 20px; font-weight: 600; min-width: 58px; text-align: center; white-space: nowrap; }
 .layer-strip { display: flex; height: 10px; border-radius: 3px; overflow: hidden; background: var(--bg-4); cursor: pointer; }
 .layer-strip > div { flex: 1; min-width: 1px; }
 
