@@ -1,0 +1,30 @@
+{
+  "name": "webmatica",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Lightweight in-browser 3D viewer for Litematica (.litematic), Sponge (.schem) and structure (.nbt) schematics.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "make-example": "tsx scripts/make-example.ts"
+  },
+  "dependencies": {
+    "pako": "^3.0.3",
+    "preact": "^11.2.0",
+    "three": "^0.187.0"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.6",
+    "@types/three": "^0.187.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}
