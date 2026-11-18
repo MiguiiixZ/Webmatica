@@ -1,0 +1,21 @@
+Pixel Perfection Community Edition - block textures
+====================================================
+
+Original resource pack "Pixel Perfection" created by Hugh "XSSheep" Rutland.
+Community Edition updates by StonePendant (1.14), freejusticehere (1.15.2),
+Stingraych, Nova_Wostra and lazerl0rd (1.16), maintained at:
+https://github.com/Athemis/PixelPerfectionCE
+
+License: Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Changes made for Webmatica (atlas.png / atlas.json):
+- Only the block textures (assets/minecraft/textures/block/*.png) are used.
+  The pack's models, blockstates, sounds and other files are not included.
+- Animated textures were reduced to their first frame.
+- Random variants (e.g. oak_leaves1.png) and OptiFine emissive overlays
+  (*_e.png) were left out.
+- The remaining 16x16 tiles were repacked into a single PNG atlas.
+
+This adapted atlas is distributed under the same license, CC BY-SA 4.0.
+Pixel Perfection is not affiliated with Mojang Studios or Microsoft.

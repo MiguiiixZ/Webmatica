@@ -30,9 +30,9 @@ export function MetricsOverlay({ viewer, schematic }: { viewer: Viewer; schemati
     <div class="overlay metrics chip mono">
       <dl class="kv">
         <dt>{S.metricsFps}</dt>
-        <dd>{m.fps ? m.fps.toFixed(0) : '–'} (on demand)</dd>
+        <dd>{m.fps ? m.fps.toFixed(0) : '–'} ({S.onDemand})</dd>
         <dt>{S.metricsFrame}</dt>
-        <dd>{m.frameMs.toFixed(2)} ms CPU</dd>
+        <dd>{m.frameMs.toFixed(2)} {S.msCpu}</dd>
         <dt>{S.metricsDraws}</dt>
         <dd>{m.drawCalls}</dd>
         <dt>{S.metricsTris}</dt>
@@ -56,7 +56,7 @@ export function MetricsOverlay({ viewer, schematic }: { viewer: Viewer; schemati
         )}
         <dt>{S.metricsPending}</dt>
         <dd>
-          {m.pendingJobs} · {m.lastMeshMs.toFixed(1)} ms/chunk
+          {m.pendingJobs} · {m.lastMeshMs.toFixed(1)} {S.msPerChunk}
         </dd>
         <dt>{S.metricsFullMesh}</dt>
         <dd>{m.fullMeshMs ? `${m.fullMeshMs.toFixed(0)} ms` : '–'}</dd>

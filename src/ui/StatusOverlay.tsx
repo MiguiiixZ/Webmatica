@@ -67,7 +67,7 @@ export function StatusOverlay({ hover, schematic, origin, measureOn, measure, on
         {measureEl}
         {hoverEl}
       </div>
-      {cameraMode === 'fly' && <div class="chip dim hide-narrow">WASD · Space/Shift · drag to look · wheel = speed</div>}
+      {cameraMode === 'fly' && <div class="chip dim hide-narrow">{S.flyHint}</div>}
     </div>
   );
 }

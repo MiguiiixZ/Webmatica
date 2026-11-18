@@ -67,7 +67,13 @@ export default function ViewerScreen(p: Props) {
 
   // ---- Viewer lifecycle -------------------------------------------------
   useEffect(() => {
-    const v = new Viewer(canvasRef.current!, p.settings);
+    let v: Viewer;
+    try {
+      v = new Viewer(canvasRef.current!, p.settings);
+    } catch {
+      p.onLoadError(p.activeId, S.noWebgl);
+      return;
+    }
     viewerRef.current = v;
     v.onMeshProgress = (pending, total) => setMeshProgress([pending, total]);
     v.onCameraChange = () => {
@@ -131,7 +137,8 @@ export default function ViewerScreen(p: Props) {
         }
         if (cancelled) return;
         const comp = compileTables(sch.palette, modelProviderFor(pack) ?? builtinModel, pack);
-        const v = viewerRef.current!;
+        const v = viewerRef.current;
+        if (!v) return;
         v.load(sch, comp, pack, pr.regionVisible);
         v.setTransform(pr.transform);
         if (pr.camera) v.setCameraState(pr.camera);
@@ -270,7 +277,7 @@ export default function ViewerScreen(p: Props) {
   // ---- Pointer: hover and measure -------------------------------------------
   const pending = useRef<{ x: number; y: number } | null>(null);
   const onPointerMove = useCallback((e: PointerEvent) => {
-    if (e.buttons) return; // ignore while dragging the camera
+    if (e.buttons || document.hidden) return; // ignore while dragging the camera or in the background
     if (!pending.current) {
       requestAnimationFrame(() => {
         const pt = pending.current;
@@ -443,19 +450,21 @@ export default function ViewerScreen(p: Props) {
             setCameraMode(v.cameraMode);
           }}
         >
-          {cameraMode === 'orbit' ? S.cameraOrbit : S.cameraFly}
+          <span class="long">{cameraMode === 'orbit' ? S.cameraOrbit : S.cameraFly}</span>
+          <span class="short">{cameraMode === 'orbit' ? S.cameraOrbitShort : S.cameraFlyShort}</span>
         </button>
         <button class="btn ghost hide-narrow" title={S.resetCamera} onClick={() => viewerRef.current?.resetCamera()}>
           ⟲
         </button>
-        <button class={`btn ghost${measureOn ? ' active' : ''}`} title={S.measureHint} onClick={() => { setMeasureOn(!measureOn); setMeasure([]); }}>
+        <button class={`btn ghost hide-narrow${measureOn ? ' active' : ''}`} title={S.measureHint} onClick={() => { setMeasureOn(!measureOn); setMeasure([]); }}>
           {S.measure}
         </button>
         <button class="btn ghost icon" title={S.shortcuts} onClick={() => setShowHelp(true)}>
           ?
         </button>
         <button class={`btn ghost${rightOpen ? ' active' : ''}`} onClick={() => setRightOpen(!rightOpen)}>
-          {S.panelMaterials}
+          <span class="long">{S.panelMaterials}</span>
+          <span class="short">{S.panelMaterialsShort}</span>
         </button>
       </div>
 

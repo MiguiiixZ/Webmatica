@@ -1,0 +1,21 @@
+# Cloudflare Pages headers (https://developers.cloudflare.com/pages/configuration/headers/)
+
+/*
+  # Cross-origin isolation lets the mesh workers share block data
+  # (SharedArrayBuffer) instead of copying it. The site loads no third-party
+  # resources, so these headers do not block anything.
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Hashed build output never changes: cache it for a year.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/textures/*
+  Cache-Control: public, max-age=604800
+
+/examples/*
+  Cache-Control: public, max-age=86400

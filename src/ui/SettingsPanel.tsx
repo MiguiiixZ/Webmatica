@@ -44,7 +44,7 @@ export function SettingsPanel({ settings, setSettings }: { settings: RenderSetti
         {check('grid', S.grid)}
       </div>
       <div class="section">
-        <h4>Performance</h4>
+        <h4>{S.settingsPerformance}</h4>
         {check('lowPower', S.lowPower)}
         <label class="row">
           <span class="dim">{S.maxDpr}</span>

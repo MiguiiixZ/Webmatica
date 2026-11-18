@@ -20,11 +20,11 @@ interface Props {
 
 function timeAgo(t: number): string {
   const s = Math.round((Date.now() - t) / 1000);
-  if (s < 60) return 'just now';
+  if (s < 60) return S.justNow;
   const m = Math.round(s / 60);
-  if (m < 60) return `${m} min ago`;
+  if (m < 60) return S.minutesAgo(m);
   const h = Math.round(m / 60);
-  if (h < 48) return `${h} h ago`;
+  if (h < 48) return S.hoursAgo(h);
   return new Date(t).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
@@ -115,7 +115,7 @@ export function Welcome(p: Props) {
               <div style={{ minWidth: 0 }}>
                 <div class="title">{r.name}</div>
                 <div class="dim">
-                  {r.dims.join(' × ')} · {r.totalBlocks.toLocaleString('en-US')} blocks · {S.lastOpened} {timeAgo(r.lastOpened)}
+                  {r.dims.join(' × ')} · {S.blocksCount(r.totalBlocks)} · {S.lastOpened} {timeAgo(r.lastOpened)}
                 </div>
                 {r.progress > 0 && (
                   <>
@@ -142,7 +142,7 @@ export function Welcome(p: Props) {
           <div>{S.textureCredit}</div>
           <div>{S.notAffiliated}</div>
           <div>
-            <a href="https://github.com/MiguiiixZ/Webmatica" target="_blank" rel="noopener noreferrer">Source code</a> ·{' '}
+            <a href="https://github.com/MiguiiixZ/Webmatica" target="_blank" rel="noopener noreferrer">{S.sourceCode}</a> ·{' '}
             <a href={`${import.meta.env.BASE_URL}LICENSES.txt`} target="_blank" rel="noopener noreferrer">{S.licenses}</a>
           </div>
         </div>

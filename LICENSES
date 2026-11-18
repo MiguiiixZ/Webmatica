@@ -1,0 +1,101 @@
+Third-party licenses
+====================
+
+Webmatica's own source code is released under the MIT License (see LICENSE).
+This file lists the third-party material included in the published website.
+
+Webmatica is not affiliated with, endorsed by or associated with Mojang
+Studios, Microsoft, or the author of Litematica (masa). "Minecraft" is a
+trademark of Mojang Synergies AB. No Mojang textures, models or other game
+assets are included in this repository or on the website. Users may load their
+own client.jar or resource pack; it is processed only in their browser and
+stored only on their device.
+
+
+1. Pixel Perfection Community Edition (block textures)
+------------------------------------------------------
+Files:    public/textures/pixel-perfection/atlas.png, atlas.json,
+          src/render/data/pp-colors.json (average colors derived from the textures)
+Authors:  Hugh "XSSheep" Rutland (original Pixel Perfection); StonePendant,
+          freejusticehere, Stingraych, Nova_Wostra, lazerl0rd (Community Edition)
+Source:   https://github.com/Athemis/PixelPerfectionCE
+License:  Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+          https://creativecommons.org/licenses/by-sa/4.0/
+Changes:  Only textures/block/*.png are used (no models, blockstates or other
+          files). Animated textures were cut to their first frame, random and
+          OptiFine variants were left out, and the tiles were packed into one
+          atlas. The adapted files are shared under CC BY-SA 4.0.
+Notes:    The project states that it accepts only original or compatibly
+          licensed work and keeps a public list of files found to be copies of
+          Minecraft textures (content_with_issues.md). The only listed file at
+          the time of packing, entity/banner/globe.png, is not a block texture
+          and is not included here.
+
+
+2. three.js
+-----------
+Copyright © 2010-2026 three.js authors
+License: MIT — https://github.com/mrdoob/three.js/blob/dev/LICENSE
+
+
+3. Preact
+---------
+Copyright (c) 2015-present Jason Miller
+License: MIT — https://github.com/preactjs/preact/blob/main/LICENSE
+
+
+4. pako (loaded only on browsers without native DecompressionStream)
+--------------------------------------------------------------------
+Copyright (C) 2014-2017 by Vitaly Puzrin and Andrei Tuputcyn
+License: MIT and Zlib — https://github.com/nodeca/pako/blob/master/LICENSE
+Includes a port of zlib, (C) 1995-2013 Jean-loup Gailly and Mark Adler.
+
+
+5. Vite runtime helpers
+-----------------------
+Copyright (c) 2019-present, VoidZero Inc. and Vite contributors
+License: MIT — https://github.com/vitejs/vite/blob/main/LICENSE
+
+
+6. Example schematic
+--------------------
+public/examples/example-cottage.litematic was created for this project by
+scripts/make-example.ts and is dedicated to the public domain (CC0 1.0):
+https://creativecommons.org/publicdomain/zero/1.0/
+
+
+MIT License (applies to items 2, 3, 4 and 5)
+--------------------------------------------
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+Zlib License (applies to the zlib port in pako)
+-----------------------------------------------
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the
+use of this software. Permission is granted to anyone to use this software for
+any purpose, including commercial applications, and to alter it and
+redistribute it freely, subject to the following restrictions:
+1. The origin of this software must not be misrepresented; you must not claim
+   that you wrote the original software. If you use this software in a
+   product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.

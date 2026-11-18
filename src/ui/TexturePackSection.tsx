@@ -30,8 +30,8 @@ export function TexturePackSection() {
       <div>{info ? S.packLoaded(info.name, info.textures) : S.texturePackDefault}</div>
       {info && (
         <div class="dim">
-          {info.hasModels ? 'Block models from this pack are used.' : 'Built-in block shapes are used (the pack has no block models).'}
-          {info.hasLanguage ? ' Block names from this pack are used.' : ''}
+          {info.hasModels ? S.packModelsUsed : S.packModelsBuiltin}
+          {info.hasLanguage ? ` ${S.packNamesUsed}` : ''}
           {info.warnings.map((w) => (
             <div key={w}>⚠ {w}</div>
           ))}

@@ -93,7 +93,11 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; pad
 }
 .topbar::-webkit-scrollbar { display: none; }
 .topbar .spacer { flex: 1; }
-.tabs { display: flex; gap: 4px; min-width: 0; }
+.topbar > * { flex-shrink: 0; }
+.tabs { display: flex; gap: 4px; min-width: 40px; flex: 0 1 auto !important; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex-shrink: 0; }
+.short { display: none; }
 .tab {
   display: flex; align-items: center; gap: 4px; max-width: 220px; padding: 3px 4px 3px 10px; border-radius: var(--radius);
   background: var(--bg-3); border: 1px solid var(--line); cursor: pointer; white-space: nowrap;
@@ -181,4 +185,8 @@ kbd { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; ba
   .side.left { left: 0; right: auto; }
   .tab { max-width: 140px; }
   .hide-narrow { display: none; }
+  .long { display: none; }
+  .short { display: inline; }
+  .topbar { gap: 2px; padding: 6px 4px; }
+  .topbar .btn { padding: 4px 7px; }
 }
