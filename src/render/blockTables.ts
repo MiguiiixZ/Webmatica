@@ -2,7 +2,7 @@
  * Compiles block models into compact typed-array tables consumed by the mesh
  * workers. Tables are built once per schematic (palette) and texture set.
  *
- * Positions inside a block and UVs use pixels (1/16 block).
+ * Positions inside a block use half pixels (1/32 block); UVs use pixels.
  */
 import type { BlockState } from '../parser/types';
 import { stateKey } from '../parser/types';
@@ -201,7 +201,7 @@ function uvCorners(uv: [number, number, number, number]): [number, number][] {
 
 /**
  * Quad layout (uint16 x QUAD_STRIDE):
- *   0..11  four corners x,y,z in pixels (0..16)
+ *   0..11  four corners x,y,z in half pixels (0..32; slightly more for parts sticking out)
  *   12     normal (3 bits) | cull dir (3 bits) << 3 | explicit uv (1 bit) << 6 | texture rotation (2 bits) << 7
  *   13     appearance id
  *   14..17 packed uv per corner (5 + 5 bits, pixels)
@@ -216,7 +216,7 @@ function pushQuad(
   app: number,
   uvs: [number, number][],
 ): void {
-  for (const c of corners) out.push(Math.round(c[0]), Math.round(c[1]), Math.round(c[2]));
+  for (const c of corners) out.push(Math.max(0, Math.round(c[0] * 2)), Math.max(0, Math.round(c[1] * 2)), Math.max(0, Math.round(c[2] * 2)));
   out.push(normal | (cull << 3) | ((explicit ? 1 : 0) << 6) | (rot << 7));
   out.push(app);
   for (const [u, v] of uvs) out.push(packUv(u, v));

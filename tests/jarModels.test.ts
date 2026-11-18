@@ -107,3 +107,47 @@ describe('resource pack models', () => {
     expect(m.elements.length).toBeGreaterThan(0);
   });
 });
+
+describe('partial packs and signal-level overlays', () => {
+  const packModels = {
+    dust_dot: { elements: [{ from: [0, 0.25, 0], to: [16, 0.25, 16], faces: { up: { texture: 'block/dust' } } }] },
+    dust_power_7: { elements: [{ from: [6, 0.3, 6], to: [10, 0.3, 10], faces: { up: { texture: 'block/number_7' } } }] },
+    target: { parent: 'block/cube_all', textures: { all: 'block/target_side' } },
+    target_5: { parent: 'block/cube_all', textures: { all: 'block/target_side_5' } },
+    my_furnace: { parent: 'minecraft:block/orientable', textures: { front: 'block/f', side: 'block/s', top: 'block/t' } },
+    my_stairs: { parent: 'block/stairs', textures: { bottom: 'block/b', top: 'block/b', side: 'block/b' } },
+  };
+  const packStates = {
+    redstone_wire: {
+      multipart: [
+        { apply: { model: 'block/dust_dot' } },
+        { when: { power: '7' }, apply: { model: 'block/dust_power_7' } },
+      ],
+    },
+    target: { variants: { 'power=0': { model: 'block/target' }, 'power=5': { model: 'block/target_5' } } },
+    furnace: { variants: { 'facing=north': { model: 'block/my_furnace' } } },
+    oak_stairs: { variants: { 'facing=east,half=bottom,shape=straight': { model: 'block/my_stairs' } } },
+  };
+  const pm = new JarModels(packModels, packStates);
+
+  it('ignores parts that only show the signal strength', () => {
+    const g = pm.geometry(S('redstone_wire', { power: '7', north: 'side', south: 'side', east: 'none', west: 'none' }))!;
+    expect(g.elements).toHaveLength(1);
+    expect(g.elements[0].faces.up?.tex).toBe('dust');
+  });
+
+  it('uses the resting variant for signal-level variants', () => {
+    const g = pm.geometry(S('target', { power: '5' }))!;
+    expect(g.elements[0].faces.north?.tex).toBe('target_side');
+  });
+
+  it('resolves standard parents the pack does not include', () => {
+    const f = pm.geometry(S('furnace', { facing: 'north', lit: 'false' }))!.elements[0];
+    expect(f.faces.north?.tex).toBe('f');
+    expect(f.faces.up?.tex).toBe('t');
+    expect(f.faces.north?.cull).toBe('north');
+    const st = pm.geometry(S('oak_stairs', { facing: 'east', half: 'bottom', shape: 'straight' }))!;
+    expect(st.elements).toHaveLength(2);
+    expect(st.elements[1].from).toEqual([8, 8, 0]);
+  });
+});

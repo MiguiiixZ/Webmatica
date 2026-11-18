@@ -73,7 +73,8 @@ self.onmessage = async (e: MessageEvent<{ bytes: Uint8Array; name: string }>) =>
       const n = norm(ent.name);
       if (!n) continue;
       if (n.startsWith('assets/minecraft/textures/blocks/')) legacy = true;
-      if (n.startsWith(TEX) && n.endsWith('.png') && !n.slice(TEX.length).includes('/')) {
+      // Subfolders are allowed (e.g. "block/tripwire/tripwire.png" -> "tripwire/tripwire").
+      if (n.startsWith(TEX) && n.endsWith('.png')) {
         textures.push({ name: n.slice(TEX.length, -4), png: await readEntry(bytes, ent) });
       } else if (n.startsWith(MODELS) && n.endsWith('.json')) {
         try {

@@ -120,6 +120,50 @@ function flat(tex: string, y = 0.25): QuadDef[] {
   ];
 }
 
+/**
+ * A horizontal double-sided quad over [x0,x1]x[z0,z1] with explicit UVs.
+ * Normally u follows x and v follows z; with `rotated`, u follows z and v follows x.
+ */
+function flatRect(tex: string, x0: number, z0: number, x1: number, z1: number, y: number, uv: [number, number, number, number], rotated = false): QuadDef[] {
+  const [u0, v0, u1, v1] = uv;
+  const t = (x: number, z: number): [number, number] => {
+    const fx = (x - x0) / (x1 - x0);
+    const fz = (z - z0) / (z1 - z0);
+    return rotated ? [u0 + (u1 - u0) * fz, v0 + (v1 - v0) * fx] : [u0 + (u1 - u0) * fx, v0 + (v1 - v0) * fz];
+  };
+  const up: QuadDef['pos'] = [[x0, y, z1], [x1, y, z1], [x1, y, z0], [x0, y, z0]];
+  const down: QuadDef['pos'] = [[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]];
+  return [up, down].map((pos) => ({ pos, uv: pos.map(([x, , z]) => t(x, z)) as QuadDef['uv'], tex }));
+}
+
+/** Redstone dust: a dot plus a line towards every connected side, climbing walls for "up" connections. */
+function redstoneDust(p: Record<string, string>): QuadDef[] {
+  const conn = (d: string) => p[d] === 'side' || p[d] === 'up';
+  const n = conn('north'), s = conn('south'), e = conn('east'), w = conn('west');
+  const y = 0.25;
+  const quads: QuadDef[] = [];
+  const straight = (n || s) !== (e || w);
+  if (!straight || !(n || s || e || w)) quads.push(...flatRect('redstone_dust_dot', 0, 0, 16, 16, y, [0, 0, 16, 16]));
+  if (n) quads.push(...flatRect('redstone_dust_line0', 0, 0, 16, 8, y, [0, 0, 16, 8]));
+  if (s) quads.push(...flatRect('redstone_dust_line0', 0, 8, 16, 16, y, [0, 8, 16, 16]));
+  // Line textures are vertical stripes; east-west segments use them rotated.
+  if (w) quads.push(...flatRect('redstone_dust_line1', 0, 0, 8, 16, y, [0, 0, 16, 8], true));
+  if (e) quads.push(...flatRect('redstone_dust_line1', 8, 0, 16, 16, y, [0, 8, 16, 16], true));
+  // Lone straight lines continue through the whole block.
+  if (straight && (n || s) && !(n && s)) quads.push(...flatRect('redstone_dust_line0', 0, n ? 8 : 0, 16, n ? 16 : 8, y, [0, n ? 8 : 0, 16, n ? 16 : 8]));
+  if (straight && (e || w) && !(e && w)) quads.push(...flatRect('redstone_dust_line1', e ? 0 : 8, 0, e ? 8 : 16, 16, y, [0, e ? 0 : 8, 16, e ? 8 : 16], true));
+  const wall = (d: string, a: V3, b: V3, c: V3, dd: V3) => {
+    if (p[d] !== 'up') return;
+    const uv: QuadDef['uv'] = [[0, 16], [16, 16], [16, 0], [0, 0]];
+    quads.push({ pos: [a, b, c, dd], uv, tex: 'redstone_dust_line0' }, { pos: [b, a, dd, c], uv, tex: 'redstone_dust_line0' });
+  };
+  wall('north', [0, 0, 0.25], [16, 0, 0.25], [16, 16, 0.25], [0, 16, 0.25]);
+  wall('south', [16, 0, 15.75], [0, 0, 15.75], [0, 16, 15.75], [16, 16, 15.75]);
+  wall('west', [0.25, 0, 16], [0.25, 0, 0], [0.25, 16, 0], [0.25, 16, 16]);
+  wall('east', [15.75, 0, 0], [15.75, 0, 16], [15.75, 16, 16], [15.75, 16, 0]);
+  return quads;
+}
+
 function model(elements: ElementDef[], opts: Partial<ModelDef> = {}): ModelDef {
   return { elements, layer: RenderLayer.Solid, occludes: false, ...opts };
 }
@@ -792,7 +836,7 @@ function computeModel(state: BlockState): ModelDef {
   }
   if (n === 'lily_pad') return model([], { quads: flat('lily_pad', 0.25) });
   if (n === 'pink_petals' || n === 'leaf_litter' || n === 'wildflowers' || n === 'frogspawn') return model([], { quads: flat(n, 0.5) });
-  if (n === 'redstone_wire') return model([], { quads: flat('redstone_dust_dot', 0.25), color: 'b01008' });
+  if (n === 'redstone_wire') return model([], { quads: redstoneDust(p) });
   if (n === 'rail' || n === 'powered_rail' || n === 'detector_rail' || n === 'activator_rail') {
     const on = p.powered === 'true' ? '_on' : '';
     const shape = p.shape ?? 'north_south';
@@ -869,6 +913,12 @@ function computeModel(state: BlockState): ModelDef {
     const top = n === 'anvil' ? 'anvil_top' : `${n}_top`;
     const els = [box([2, 0, 2], [14, 4, 14], 'anvil'), box([4, 4, 3], [12, 10, 13], 'anvil'), box([0, 10, 3], [16, 16, 13], tbs(top, 'anvil', 'anvil'))];
     return model(rotateElements(els, turnsFor(p.facing) + 1));
+  }
+  if (n === 'sculk_sensor' || n === 'calibrated_sculk_sensor') {
+    const phase = p.sculk_sensor_phase === 'active' ? 'active' : 'inactive';
+    return model([box([0, 0, 0], [16, 8, 16], tbs('sculk_sensor_top', 'sculk_sensor_bottom', n === 'sculk_sensor' ? 'sculk_sensor_side' : 'calibrated_sculk_sensor_input_side|sculk_sensor_side'))], {
+      quads: cross(`sculk_sensor_tendril_${phase}|sculk_sensor_tendril_inactive`, 8).map((q) => ({ ...q, pos: q.pos.map(([x, y, z]) => [x, y + 8, z]) as QuadDef['pos'] })),
+    });
   }
   if (n === 'grindstone') return model([box([4, 4, 2], [12, 16, 14], 'grindstone_side')]);
   if (n === 'bell') return model([box([4, 4, 4], [12, 13, 12], 'gold_block'), box([2, 13, 7], [14, 15, 9], 'dark_oak_planks')]);

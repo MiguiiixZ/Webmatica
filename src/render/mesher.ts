@@ -12,9 +12,9 @@
  *  3. copies precompiled quads of non-cubic blocks, skipping culled faces.
  *
  * Vertex format: 3 x uint32 per vertex (12 bytes)
- *   w0: x | y << 10 | z << 20 | ao << 30   (positions in 1/16 block = pixels, unit-local)
+ *   w0: x | y << 10 | z << 20 | ao << 30   (low 10 bits of positions in 1/32 block, unit-local)
  *   w1: normal | explicitUv << 3 | rot << 4 | uv << 6 | appearance << 16
- *   w2: palette id
+ *   w2: palette id | x >> 10 << 16 | y >> 10 << 17 | z >> 10 << 18   (11th position bits)
  * Quads use a shared index pattern (0,1,2, 0,2,3).
  */
 import { BlockVolume, CHUNK, CHUNK_VOLUME } from '../parser/volume';
@@ -165,9 +165,9 @@ export class Mesher {
           if (q0 === q1) continue;
           const out = f & FLAG_TRANSLUCENT ? this.translucent : this.solid;
           out.reserve((q1 - q0) * 12);
-          const bx = x * 16;
-          const by = y * 16;
-          const bz = z * 16;
+          const bx = x * 32;
+          const by = y * 32;
+          const bz = z * 32;
           const data = out.data;
           for (let q = q0; q < q1; q++) {
             const base = q * QUAD_STRIDE;
@@ -183,9 +183,9 @@ export class Mesher {
               const px = bx + quads[base + v * 3];
               const py = by + quads[base + v * 3 + 1];
               const pz = bz + quads[base + v * 3 + 2];
-              data[o++] = (px | (py << 10) | (pz << 20) | (3 << 30)) >>> 0;
+              data[o++] = ((px & 1023) | ((py & 1023) << 10) | ((pz & 1023) << 20) | (3 << 30)) >>> 0;
               data[o++] = (normal | (explicit << 3) | (rot << 4) | (quads[base + 14 + v] << 6) | (app << 16)) >>> 0;
-              data[o++] = id;
+              data[o++] = (id | ((px >> 10) << 16) | ((py >> 10) << 17) | ((pz >> 10) << 18)) >>> 0;
             }
             out.length = o;
           }
@@ -319,12 +319,12 @@ export class Mesher {
     const w1base = (d | (rot << 4) | (app << 16)) >>> 0;
     for (const k of order) {
       const p = [0, 0, 0];
-      p[nAxis] = layer * 16;
-      p[uAxis] = cu[k] * 16;
-      p[vAxis] = cv[k] * 16;
-      data[o++] = (p[0] | (p[1] << 10) | (p[2] << 20) | (aos[k] << 30)) >>> 0;
+      p[nAxis] = layer * 32;
+      p[uAxis] = cu[k] * 32;
+      p[vAxis] = cv[k] * 32;
+      data[o++] = ((p[0] & 1023) | ((p[1] & 1023) << 10) | ((p[2] & 1023) << 20) | (aos[k] << 30)) >>> 0;
       data[o++] = w1base;
-      data[o++] = pal;
+      data[o++] = (pal | ((p[0] >> 10) << 16) | ((p[1] >> 10) << 17) | ((p[2] >> 10) << 18)) >>> 0;
     }
     out.length = o;
   }

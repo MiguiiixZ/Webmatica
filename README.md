@@ -88,7 +88,15 @@ Minecraft `client.jar` (e.g. `.minecraft/versions/1.21.1/1.21.1.jar`) or any res
 entirely in your browser and stored only on your device; Webmatica never uploads or redistributes it. With a
 `client.jar`, real block models and the game's English block names are used too.
 
-**No Mojang textures or other game assets are included in this repository.**
+Partial resource packs work too, including redstone readability packs: missing textures fall back to the bundled
+ones, and models that inherit from standard templates the pack does not ship (`cube_all`, `orientable`, stairs,
+slabs, trapdoors, pistons, cauldrons…) use Webmatica's own equivalents. Parts of a pack that only display a
+momentary signal level (redstone dust power, target, daylight detector and sculk sensor power, sculk sensor phase)
+are ignored, since they do not help with building; useful information such as repeater delay, comparator mode,
+hopper/observer/piston/dispenser direction, note block instrument and pitch, or an inverted daylight detector is kept.
+
+**No Mojang textures or other game assets are included in this repository.** Packs based on Faithful or other
+derivatives of the game's textures are not bundled either; load them yourself through the settings.
 
 ## Run locally
 

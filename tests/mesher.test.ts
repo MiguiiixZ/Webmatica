@@ -23,7 +23,9 @@ function vertices(a: Uint32Array) {
   const out: { p: [number, number, number]; n: number }[] = [];
   for (let i = 0; i < a.length; i += 3) {
     const w0 = a[i];
-    out.push({ p: [(w0 & 1023) / 16, ((w0 >> 10) & 1023) / 16, ((w0 >> 20) & 1023) / 16], n: a[i + 1] & 7 });
+    const w2 = a[i + 2];
+    const c = (lo: number, bit: number) => (lo | (((w2 >> bit) & 1) << 10)) / 32;
+    out.push({ p: [c(w0 & 1023, 16), c((w0 >> 10) & 1023, 17), c((w0 >> 20) & 1023, 18)], n: a[i + 1] & 7 });
   }
   return out;
 }

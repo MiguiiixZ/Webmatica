@@ -9,6 +9,7 @@ import type { BlockState } from '../parser/types';
 import { shortName } from '../parser/types';
 import type { ModelProvider } from './blockTables';
 import { builtinModel } from './models';
+import { BASE_MODELS } from './baseModels';
 import { DIRS, type Dir, type ElementDef, type FaceDef, type ModelDef, type QuadDef, type V3 } from './modelTypes';
 
 type Json = Record<string, unknown>;
@@ -35,6 +36,32 @@ interface VariantRef {
   x?: number;
   y?: number;
   uvlock?: boolean;
+}
+
+/**
+ * Block state properties that only describe a momentary signal level, not how
+ * to build the block (e.g. the power number some packs print on redstone dust).
+ * Pack variants that depend only on them are ignored, and the properties are
+ * treated as their resting value when choosing a variant.
+ */
+const MEASUREMENT_PROPS: Record<string, Record<string, string>> = {
+  redstone_wire: { power: '0' },
+  target: { power: '0' },
+  daylight_detector: { power: '0' },
+  sculk_sensor: { power: '0', sculk_sensor_phase: 'inactive' },
+  calibrated_sculk_sensor: { power: '0', sculk_sensor_phase: 'inactive' },
+  light_weighted_pressure_plate: { power: '0' },
+  heavy_weighted_pressure_plate: { power: '0' },
+};
+
+/** True when a multipart condition only tests measurement properties. */
+function onlyMeasurement(when: unknown, ignored: Record<string, string>): boolean {
+  if (!when || typeof when !== 'object') return false;
+  const w = when as Json;
+  if (Array.isArray(w.OR)) return w.OR.length > 0 && w.OR.every((c) => onlyMeasurement(c, ignored));
+  if (Array.isArray(w.AND)) return w.AND.length > 0 && w.AND.every((c) => onlyMeasurement(c, ignored));
+  const keys = Object.keys(w);
+  return keys.length > 0 && keys.every((k) => k in ignored);
 }
 
 function modelKey(ref: string): string {
@@ -95,7 +122,7 @@ export class JarModels {
     const key = modelKey(ref);
     if (this.resolved.has(key)) return this.resolved.get(key)!;
     if (depth > 20) return null;
-    const m = this.models[key] as RawModel | undefined;
+    const m = (this.models[key] ?? BASE_MODELS[key]) as RawModel | undefined;
     let result: { elements: RawElement[]; textures: Record<string, string> } | null = null;
     if (m) {
       const parent = m.parent && !m.parent.startsWith('builtin/') ? this.resolve(m.parent, depth + 1) : null;
@@ -125,7 +152,8 @@ export class JarModels {
       const one = Array.isArray(v) ? v[0] : v;
       return one && typeof one === 'object' && typeof (one as VariantRef).model === 'string' ? (one as VariantRef) : null;
     };
-    const props = state.props;
+    const ignored = MEASUREMENT_PROPS[name] ?? {};
+    const props = { ...state.props, ...ignored };
     if (bs.variants && typeof bs.variants === 'object') {
       for (const [k, v] of Object.entries(bs.variants as Json)) {
         const ok =
@@ -152,6 +180,7 @@ export class JarModels {
         return Object.entries(w).every(([pk, pv]) => String(pv).split('|').includes(props[pk] ?? ''));
       };
       for (const part of bs.multipart as Json[]) {
+        if (onlyMeasurement(part.when, ignored)) continue;
         if (!test(part.when)) continue;
         const apply = part.apply;
         for (const a of Array.isArray(apply) ? apply : [apply]) {
@@ -172,7 +201,9 @@ export class JarModels {
     const quads: QuadDef[] = [];
     for (const ref of refs) {
       const model = this.resolve(ref.model);
-      if (!model) continue;
+      // A referenced model the pack does not have (and we have no template for):
+      // use the built-in shape rather than an incomplete one.
+      if (!model) return null;
       const xr = ref.x ?? 0;
       const yr = ref.y ?? 0;
       for (const el of model.elements) this.convert(el, model.textures, xr, yr, !!ref.uvlock, elements, quads);
