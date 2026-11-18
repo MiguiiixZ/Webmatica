@@ -378,7 +378,9 @@ const CROSS_PLANTS = new Set([
 ]);
 const TALL_PLANTS = new Set(['tall_grass', 'large_fern', 'sunflower', 'lilac', 'rose_bush', 'peony', 'pitcher_plant', 'tall_seagrass', 'small_dripleaf']);
 
-const TRANSLUCENT_FULL = new Set(['ice', 'slime_block', 'honey_block', 'tinted_glass', 'frosted_ice']);
+const TRANSLUCENT_FULL = new Set(['ice', 'tinted_glass', 'frosted_ice']);
+// Slime and honey look nearly solid in game (their models have an inner cube): draw them opaque, but keep neighbours visible.
+const SOLID_SEE_THROUGH = new Set(['slime_block', 'honey_block']);
 const CUTOUT_FULL = new Set(['spawner', 'trial_spawner', 'vault', 'mangrove_roots', 'beacon', 'scaffolding', 'chorus_flower', 'azalea', 'flowering_azalea', 'cauldron', 'water_cauldron', 'lava_cauldron', 'powder_snow_cauldron', 'composter', 'conduit', 'creaking_heart']);
 
 const BED_COLOR: Record<string, string> = {};
@@ -920,7 +922,7 @@ function computeModel(state: BlockState): ModelDef {
 
   // Full cubes with special render layers.
   if (TRANSLUCENT_FULL.has(n)) return fullCube(cubeTextures(n, p), { occludes: false, layer: RenderLayer.Translucent, cullGroup: n });
-  if (CUTOUT_FULL.has(n)) return fullCube(cubeTextures(n, p), { occludes: false, cullGroup: n });
+  if (CUTOUT_FULL.has(n) || SOLID_SEE_THROUGH.has(n)) return fullCube(cubeTextures(n, p), { occludes: false, cullGroup: n });
   if (n.includes('copper_grate')) return fullCube(n.replace('waxed_', ''), { occludes: false, cullGroup: n });
 
   // Default: an opaque full cube.

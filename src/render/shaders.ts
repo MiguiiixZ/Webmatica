@@ -109,11 +109,13 @@ void main() {
   bool translucent = uTranslucentPass > 0.5;
   if (uTextured && hasTex) {
     c = texture(uTex, vec3(vUv, float(vApp)));
-    if (!translucent && c.a < 0.5) discard;
+    // Low threshold: cut-out holes are fully transparent, while semi-transparent
+    // textures drawn as solid (slime, honey) must keep all their pixels.
+    if (!translucent && c.a < 0.1) discard;
     if (!translucent) c.a = 1.0;
   } else if (!translucent) {
     // Flat colors: keep the silhouette of cut-out textures (plants, rails, panes).
-    if (hasTex && texture(uTex, vec3(vUv, float(vApp))).a < 0.5) discard;
+    if (hasTex && texture(uTex, vec3(vUv, float(vApp))).a < 0.1) discard;
     c.a = 1.0;
   }
   if (translucent && c.a < 0.02) discard;

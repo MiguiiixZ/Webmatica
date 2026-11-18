@@ -12,16 +12,22 @@ export function MetricsOverlay({ viewer, schematic }: { viewer: Viewer; schemati
   useEffect(() => {
     // Updated after rendered frames only (no polling loop), at most 4 times per second.
     let last = 0;
-    viewer.onFrame = () => {
-      const now = performance.now();
-      if (now - last > 250) {
-        last = now;
-        setM(viewer.metrics());
-      }
+    let trailing = 0;
+    const refresh = () => {
+      last = performance.now();
+      trailing = 0;
+      setM(viewer.metrics());
     };
-    setM(viewer.metrics());
+    viewer.onFrame = () => {
+      const wait = 250 - (performance.now() - last);
+      if (wait <= 0) refresh();
+      // Make sure the last frame of a burst is reflected (one-shot, not a polling loop).
+      else if (!trailing) trailing = window.setTimeout(refresh, wait);
+    };
+    refresh();
     return () => {
       viewer.onFrame = null;
+      clearTimeout(trailing);
     };
   }, [viewer]);
   const blockBytes = schematic.regions.reduce((s, r) => s + r.volume.byteSize, 0);

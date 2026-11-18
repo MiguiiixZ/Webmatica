@@ -216,11 +216,11 @@ export function MaterialPanel({ schematic, project, update, highlight, setHighli
                 onChange={() => toggleCollected(e.item)}
               />
               <span class="swatch" style={{ background: swatch(e) }} />
-              <span class="mat-name">{e.name}</span>
-              <span class="mat-count mono">
-                <div class="total">{e.total.toLocaleString('en-US')}</div>
-                <div class="split">{formatBreakdown(e.total, e.stack)}</div>
+              <span class="mat-main">
+                <span class="mat-name">{e.name}</span>
+                <span class="split mono">{formatBreakdown(e.total, e.stack)}</span>
               </span>
+              <span class="mat-count mono total">{e.total.toLocaleString('en-US')}</span>
             </div>
           );
         })}
