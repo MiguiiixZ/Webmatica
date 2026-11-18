@@ -81,16 +81,22 @@ export async function deleteProject(id: string): Promise<void> {
 /** Debounced saver: coalesces frequent updates (camera moves) into one write. */
 export class ProjectSaver {
   private timer = 0;
+  private deadline = 0;
   private pending: ProjectState | null = null;
 
-  schedule(p: ProjectState, delay = 800): void {
+  /** Saves `p` after `delay` ms. An earlier pending deadline is never postponed. */
+  schedule(p: ProjectState, delay = 300): void {
     this.pending = p;
+    const due = performance.now() + delay;
+    if (this.timer && this.deadline <= due) return;
     clearTimeout(this.timer);
+    this.deadline = due;
     this.timer = window.setTimeout(() => this.flush(), delay);
   }
 
   flush(): void {
     clearTimeout(this.timer);
+    this.timer = 0;
     if (this.pending) {
       void saveProject(this.pending);
       this.pending = null;
