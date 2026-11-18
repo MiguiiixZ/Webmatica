@@ -1,9 +1,10 @@
 /**
  * Chunk mesher (runs inside a Web Worker).
  *
- * For one 16^3 chunk it:
- *  1. copies the chunk plus a 1-block border from all visible regions into a
- *     padded 18^3 buffer, treating blocks outside the layer clip range as air;
+ * Meshing works on "mesh units" of MESH_UNIT^3 blocks (32^3: eight storage
+ * chunks, which keeps draw calls low). For one unit it:
+ *  1. copies the unit plus a 1-block border from all visible regions into a
+ *     padded buffer, treating blocks outside the layer clip range as air;
  *  2. emits faces of full cubes that are not hidden by an opaque neighbour
  *     (or by a neighbour of the same cull group, e.g. glass next to glass),
  *     merging coplanar faces with identical appearance and lighting
@@ -11,7 +12,7 @@
  *  3. copies precompiled quads of non-cubic blocks, skipping culled faces.
  *
  * Vertex format: 3 x uint32 per vertex (12 bytes)
- *   w0: x | y << 10 | z << 20 | ao << 30   (positions in 1/32 block, chunk-local)
+ *   w0: x | y << 10 | z << 20 | ao << 30   (positions in 1/16 block = pixels, unit-local)
  *   w1: normal | explicitUv << 3 | rot << 4 | uv << 6 | appearance << 16
  *   w2: palette id
  * Quads use a shared index pattern (0,1,2, 0,2,3).
@@ -35,7 +36,10 @@ export interface MeshOutput {
   translucent: Uint32Array;
 }
 
-const P = CHUNK + 2; // padded size
+/** Edge length of a mesh unit in blocks. */
+export const MESH_UNIT = 32;
+const N = MESH_UNIT;
+const P = N + 2; // padded size
 const P2 = P * P;
 /** Offsets in the padded buffer for each direction (down, up, north, south, west, east). */
 const NEIGHBOR = [-P2, P2, -P, P, -1, 1];
@@ -64,9 +68,9 @@ export class Mesher {
   private readonly solid = new Buf(1 << 16);
   private readonly translucent = new Buf(1 << 14);
   // Greedy masks for one slice: appearance key (0 = no face) and palette id.
-  private readonly maskKey = new Uint32Array(CHUNK * CHUNK);
-  private readonly maskPal = new Uint16Array(CHUNK * CHUNK);
-  private readonly maskTr = new Uint8Array(CHUNK * CHUNK);
+  private readonly maskKey = new Uint32Array(N * N);
+  private readonly maskPal = new Uint16Array(N * N);
+  private readonly maskTr = new Uint8Array(N * N);
   ao = true;
 
   constructor(
@@ -82,13 +86,13 @@ export class Mesher {
     this.regions = r;
   }
 
-  /** Fills the padded buffer for the chunk at chunk coords (cx, cy, cz). Returns false if it is empty. */
+  /** Fills the padded buffer for the unit at unit coords (cx, cy, cz). Returns false if it is empty. */
   private fill(cx: number, cy: number, cz: number, visible: boolean[], clip: Clip | null): boolean {
     const pad = this.padded;
     pad.fill(0);
-    const ox = cx * CHUNK - 1;
-    const oy = cy * CHUNK - 1;
-    const oz = cz * CHUNK - 1;
+    const ox = cx * N - 1;
+    const oy = cy * N - 1;
+    const oz = cz * N - 1;
     let any = false;
     for (let ri = 0; ri < this.regions.length; ri++) {
       if (!visible[ri]) continue;
@@ -122,7 +126,7 @@ export class Mesher {
     return any;
   }
 
-  /** Meshes one chunk. `visible` lists which regions are shown. */
+  /** Meshes one unit. `visible` lists which regions are shown. */
   mesh(cx: number, cy: number, cz: number, visible: boolean[], clip: Clip | null): MeshOutput {
     this.solid.length = 0;
     this.translucent.length = 0;
@@ -148,10 +152,10 @@ export class Mesher {
   private emitQuads(): void {
     const { flags, quadStart, quads } = this.tables;
     const pad = this.padded;
-    for (let y = 0; y < CHUNK; y++) {
-      for (let z = 0; z < CHUNK; z++) {
+    for (let y = 0; y < N; y++) {
+      for (let z = 0; z < N; z++) {
         let pi = (y + 1) * P2 + (z + 1) * P + 1;
-        for (let x = 0; x < CHUNK; x++, pi++) {
+        for (let x = 0; x < N; x++, pi++) {
           const id = pad[pi];
           if (id === 0) continue;
           const f = flags[id];
@@ -161,9 +165,9 @@ export class Mesher {
           if (q0 === q1) continue;
           const out = f & FLAG_TRANSLUCENT ? this.translucent : this.solid;
           out.reserve((q1 - q0) * 12);
-          const bx = x * 32;
-          const by = y * 32;
-          const bz = z * 32;
+          const bx = x * 16;
+          const by = y * 16;
+          const bz = z * 16;
           const data = out.data;
           for (let q = q0; q < q1; q++) {
             const base = q * QUAD_STRIDE;
@@ -211,13 +215,13 @@ export class Mesher {
     const mt = this.maskTr;
     const useAo = this.ao;
 
-    for (let s = 0; s < CHUNK; s++) {
+    for (let s = 0; s < N; s++) {
       let anyFace = false;
-      for (let v = 0; v < CHUNK; v++) {
-        for (let u = 0; u < CHUNK; u++) {
+      for (let v = 0; v < N; v++) {
+        for (let u = 0; u < N; u++) {
           const pi = (s + 1) * sn + (u + 1) * su + (v + 1) * sv;
           const id = pad[pi];
-          const mi = v * CHUNK + u;
+          const mi = v * N + u;
           mk[mi] = 0;
           if (id === 0 || !(flags[id] & FLAG_CUBE)) continue;
           if (this.hidden(id, pad[pi + nb])) continue;
@@ -232,9 +236,9 @@ export class Mesher {
       }
       if (!anyFace) continue;
       // Merge rectangles.
-      for (let v = 0; v < CHUNK; v++) {
-        for (let u = 0; u < CHUNK; ) {
-          const mi = v * CHUNK + u;
+      for (let v = 0; v < N; v++) {
+        for (let u = 0; u < N; ) {
+          const mi = v * N + u;
           const key = mk[mi];
           if (key === 0) {
             u++;
@@ -246,14 +250,14 @@ export class Mesher {
           let w = 1;
           let h = 1;
           if (uniformAo) {
-            while (u + w < CHUNK && mk[mi + w] === key && mp[mi + w] === pal) w++;
-            outer: while (v + h < CHUNK) {
-              const row = (v + h) * CHUNK + u;
+            while (u + w < N && mk[mi + w] === key && mp[mi + w] === pal) w++;
+            outer: while (v + h < N) {
+              const row = (v + h) * N + u;
               for (let k = 0; k < w; k++) if (mk[row + k] !== key || mp[row + k] !== pal) break outer;
               h++;
             }
           }
-          for (let dv = 0; dv < h; dv++) mk.fill(0, (v + dv) * CHUNK + u, (v + dv) * CHUNK + u + w);
+          for (let dv = 0; dv < h; dv++) mk.fill(0, (v + dv) * N + u, (v + dv) * N + u + w);
           this.emitRect(d, nAxis, uAxis, vAxis, positive ? s + 1 : s, u, v, w, h, (key & 0xffff) - 1, ao, pal, mt[mi] === 1);
           u += w;
         }
@@ -315,9 +319,9 @@ export class Mesher {
     const w1base = (d | (rot << 4) | (app << 16)) >>> 0;
     for (const k of order) {
       const p = [0, 0, 0];
-      p[nAxis] = layer * 32;
-      p[uAxis] = cu[k] * 32;
-      p[vAxis] = cv[k] * 32;
+      p[nAxis] = layer * 16;
+      p[uAxis] = cu[k] * 16;
+      p[vAxis] = cv[k] * 16;
       data[o++] = (p[0] | (p[1] << 10) | (p[2] << 20) | (aos[k] << 30)) >>> 0;
       data[o++] = w1base;
       data[o++] = pal;
@@ -330,26 +334,26 @@ function positiveOrder(positive: boolean, rightHanded: boolean): number[] {
   return positive === rightHanded ? [0, 1, 2, 3] : [0, 3, 2, 1];
 }
 
-/** Lists the chunks (in chunk coordinates of the schematic) that contain any block of the given regions. */
+/** Lists the mesh units (in unit coordinates of the schematic) that contain any block of the given regions. */
 export function nonEmptyChunks(regions: MeshRegion[], size: [number, number, number]): Uint8Array {
-  const cx = Math.ceil(size[0] / CHUNK);
-  const cy = Math.ceil(size[1] / CHUNK);
-  const cz = Math.ceil(size[2] / CHUNK);
-  const out = new Uint8Array(cx * cy * cz);
+  const ux = Math.ceil(size[0] / N);
+  const uy = Math.ceil(size[1] / N);
+  const uz = Math.ceil(size[2] / N);
+  const out = new Uint8Array(ux * uy * uz);
   for (const { offset, volume } of regions) {
     for (let y = 0; y < volume.cy; y++) {
       for (let z = 0; z < volume.cz; z++) {
         for (let x = 0; x < volume.cx; x++) {
           if (volume.slots[volume.chunkIndex(x, y, z)] < 0) continue;
-          // A region chunk can straddle up to 8 schematic chunks.
-          const x0 = Math.floor((offset[0] + x * CHUNK) / CHUNK);
-          const y0 = Math.floor((offset[1] + y * CHUNK) / CHUNK);
-          const z0 = Math.floor((offset[2] + z * CHUNK) / CHUNK);
-          const x1 = Math.floor((offset[0] + Math.min(volume.sx, (x + 1) * CHUNK) - 1) / CHUNK);
-          const y1 = Math.floor((offset[1] + Math.min(volume.sy, (y + 1) * CHUNK) - 1) / CHUNK);
-          const z1 = Math.floor((offset[2] + Math.min(volume.sz, (z + 1) * CHUNK) - 1) / CHUNK);
+          // A storage chunk can straddle several mesh units.
+          const x0 = Math.floor((offset[0] + x * CHUNK) / N);
+          const y0 = Math.floor((offset[1] + y * CHUNK) / N);
+          const z0 = Math.floor((offset[2] + z * CHUNK) / N);
+          const x1 = Math.floor((offset[0] + Math.min(volume.sx, (x + 1) * CHUNK) - 1) / N);
+          const y1 = Math.floor((offset[1] + Math.min(volume.sy, (y + 1) * CHUNK) - 1) / N);
+          const z1 = Math.floor((offset[2] + Math.min(volume.sz, (z + 1) * CHUNK) - 1) / N);
           for (let yy = y0; yy <= y1; yy++)
-            for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) out[(yy * cz + zz) * cx + xx] = 1;
+            for (let zz = z0; zz <= z1; zz++) for (let xx = x0; xx <= x1; xx++) out[(yy * uz + zz) * ux + xx] = 1;
         }
       }
     }

@@ -23,7 +23,7 @@ function vertices(a: Uint32Array) {
   const out: { p: [number, number, number]; n: number }[] = [];
   for (let i = 0; i < a.length; i += 3) {
     const w0 = a[i];
-    out.push({ p: [(w0 & 1023) / 32, ((w0 >> 10) & 1023) / 32, ((w0 >> 20) & 1023) / 32], n: a[i + 1] & 7 });
+    out.push({ p: [(w0 & 1023) / 16, ((w0 >> 10) & 1023) / 16, ((w0 >> 20) & 1023) / 16], n: a[i + 1] & 7 });
   }
   return out;
 }
@@ -86,18 +86,18 @@ describe('mesher', () => {
     expect(quads(mesher.mesh(0, 0, 0, [false], null).solid)).toBe(0);
   });
 
-  it('culls faces across chunk borders', () => {
-    const { mesher } = build([32, 1, 1], palette, () => 1);
+  it('culls faces across mesh unit borders', () => {
+    const { mesher } = build([64, 1, 1], palette, () => 1);
     const a = mesher.mesh(0, 0, 0, [true], null);
     const b = mesher.mesh(1, 0, 0, [true], null);
-    // Each half: 4 long sides + one end cap; the faces at x = 16 are hidden.
+    // Each half: 4 long sides + one end cap; the faces at x = 32 are hidden.
     expect(quads(a.solid)).toBe(5);
     expect(quads(b.solid)).toBe(5);
   });
 
   it('lists non-empty chunks', () => {
-    const { volume } = build([40, 1, 1], palette, (x) => (x === 39 ? 1 : 0));
-    const ne = nonEmptyChunks([{ offset: [0, 0, 0], volume }], [40, 1, 1]);
+    const { volume } = build([80, 1, 1], palette, (x) => (x === 79 ? 1 : 0));
+    const ne = nonEmptyChunks([{ offset: [0, 0, 0], volume }], [80, 1, 1]);
     expect(Array.from(ne)).toEqual([0, 0, 1]);
   });
 

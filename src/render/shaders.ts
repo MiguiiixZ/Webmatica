@@ -28,7 +28,7 @@ const float AO_LEVEL[4] = float[4](0.45, 0.65, 0.82, 1.0);
 void main() {
   uint w0 = aData.x;
   uint w1 = aData.y;
-  vec3 p = vec3(float(w0 & 1023u), float((w0 >> 10u) & 1023u), float((w0 >> 20u) & 1023u)) / 32.0;
+  vec3 p = vec3(float(w0 & 1023u), float((w0 >> 10u) & 1023u), float((w0 >> 20u) & 1023u)) / 16.0;
   uint ao = w0 >> 30u;
   uint n = w1 & 7u;
   uint explicitUv = (w1 >> 3u) & 1u;

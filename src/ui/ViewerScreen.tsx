@@ -8,6 +8,7 @@ import { compileTables, type CompileResult } from '../render/blockTables';
 import { builtinModel } from '../render/models';
 import { loadDefaultPack, type TexturePack } from '../render/texturePack';
 import { getActivePack, onPackChange, modelProviderFor } from '../render/packManager';
+import { restorePack } from '../render/resourcePack';
 import { AXIS_NAMES, visibleRange, type LayerMode, type LayerState, type RenderSettings } from '../render/viewState';
 import { layerCounts } from '../materials/layerStats';
 import { S } from './strings';
@@ -119,6 +120,7 @@ export default function ViewerScreen(p: Props) {
         pr.totalBlocks = totalBlocks;
         p.onRename(id, pr.name);
         setStatus(S.loadingTextures);
+        await restorePack().catch(() => null);
         let pack: TexturePack | null = getActivePack();
         if (!pack) {
           try {

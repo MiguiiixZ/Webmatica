@@ -40,6 +40,7 @@ export function MetricsOverlay({ viewer, schematic }: { viewer: Viewer; schemati
         <dt>{S.metricsChunks}</dt>
         <dd>
           {m.chunksShown} / {m.chunksTotal}
+          {m.distanceLimited ? ` (${S.metricsLimited})` : ''}
         </dd>
         <dt>{S.metricsGeometry}</dt>
         <dd>{mb(m.geometryBytes)}</dd>
@@ -57,6 +58,8 @@ export function MetricsOverlay({ viewer, schematic }: { viewer: Viewer; schemati
         <dd>
           {m.pendingJobs} · {m.lastMeshMs.toFixed(1)} ms/chunk
         </dd>
+        <dt>{S.metricsFullMesh}</dt>
+        <dd>{m.fullMeshMs ? `${m.fullMeshMs.toFixed(0)} ms` : '–'}</dd>
       </dl>
     </div>
   );

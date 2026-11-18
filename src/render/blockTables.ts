@@ -2,7 +2,7 @@
  * Compiles block models into compact typed-array tables consumed by the mesh
  * workers. Tables are built once per schematic (palette) and texture set.
  *
- * Positions inside a block use 1/32-block units (half pixels), UVs use pixels.
+ * Positions inside a block and UVs use pixels (1/16 block).
  */
 import type { BlockState } from '../parser/types';
 import { stateKey } from '../parser/types';
@@ -165,8 +165,14 @@ export function compileTables(palette: BlockState[], provider: ModelProvider, so
         const c = faceCorners(d, e.from, e.to);
         const app = registry.get(face.tex, m.color);
         const explicit = !!face.uv;
-        const uvs: [number, number][] = explicit ? uvCorners(face.uv!) : [[0, 0], [0, 0], [0, 0], [0, 0]];
-        pushQuad(quads, c, DIR_INDEX[d], face.cull ? DIR_INDEX[face.cull] : CULL_NONE, explicit, rotations[face.rot ?? 0] ?? 0, app, uvs);
+        let rot = rotations[face.rot ?? 0] ?? 0;
+        let uvs: [number, number][] = explicit ? uvCorners(face.uv!) : [[0, 0], [0, 0], [0, 0], [0, 0]];
+        if (explicit && rot) {
+          // Rotate explicit UVs by cycling the corners (the shader rotation only suits repeating UVs).
+          uvs = uvs.slice(rot).concat(uvs.slice(0, rot));
+          rot = 0;
+        }
+        pushQuad(quads, c, DIR_INDEX[d], face.cull ? DIR_INDEX[face.cull] : CULL_NONE, explicit, rot, app, uvs);
       }
     }
     for (const q of m.quads ?? []) {
@@ -195,7 +201,7 @@ function uvCorners(uv: [number, number, number, number]): [number, number][] {
 
 /**
  * Quad layout (uint16 x QUAD_STRIDE):
- *   0..11  four corners x,y,z in 1/32 block units (0..32)
+ *   0..11  four corners x,y,z in pixels (0..16)
  *   12     normal (3 bits) | cull dir (3 bits) << 3 | explicit uv (1 bit) << 6 | texture rotation (2 bits) << 7
  *   13     appearance id
  *   14..17 packed uv per corner (5 + 5 bits, pixels)
@@ -210,7 +216,7 @@ function pushQuad(
   app: number,
   uvs: [number, number][],
 ): void {
-  for (const c of corners) out.push(Math.round(c[0] * 2), Math.round(c[1] * 2), Math.round(c[2] * 2));
+  for (const c of corners) out.push(Math.round(c[0]), Math.round(c[1]), Math.round(c[2]));
   out.push(normal | (cull << 3) | ((explicit ? 1 : 0) << 6) | (rot << 7));
   out.push(app);
   for (const [u, v] of uvs) out.push(packUv(u, v));

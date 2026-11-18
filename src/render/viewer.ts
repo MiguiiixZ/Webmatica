@@ -38,11 +38,10 @@ import {
   Raycaster,
 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { CHUNK } from '../parser/volume';
 import type { Schematic } from '../parser/types';
 import type { CompileResult, RenderTables } from './blockTables';
 import { FLAG_EMPTY } from './blockTables';
-import { nonEmptyChunks, type Clip, type MeshRegion } from './mesher';
+import { MESH_UNIT, nonEmptyChunks, type Clip, type MeshRegion } from './mesher';
 import { chunkFragmentShader, chunkVertexShader } from './shaders';
 import { buildLayerData, type TexturePack } from './texturePack';
 import { visibleRange, type CameraState, type LayerState, type RenderSettings, type ViewTransform } from './viewState';
@@ -69,6 +68,10 @@ export interface ViewerMetrics {
   chunksTotal: number;
   pendingJobs: number;
   lastMeshMs: number;
+  /** Wall time of the last complete (re)meshing pass. */
+  fullMeshMs: number;
+  /** True when far chunks are hidden to stay within the memory budget. */
+  distanceLimited: boolean;
 }
 
 interface CachedMesh {
@@ -97,7 +100,16 @@ interface Job {
 }
 
 const CACHE_BUDGET = 96 * 1024 * 1024;
-const MAX_INFLIGHT_PER_WORKER = 2;
+/** GPU memory for visible chunk meshes before the automatic render distance kicks in. */
+const GPU_BUDGET = 256 * 1024 * 1024;
+const GPU_BUDGET_LOW = 128 * 1024 * 1024;
+const MAX_MESH_UNITS = 1500;
+const MAX_MESH_UNITS_LOW = 700;
+
+function releaseArray(this: BufferAttribute): void {
+  (this as unknown as { array: ArrayLike<number> | null }).array = null;
+}
+const MAX_INFLIGHT_PER_WORKER = 4;
 
 export class Viewer {
   readonly canvas: HTMLCanvasElement;
@@ -255,6 +267,7 @@ export class Viewer {
     this.controls.zoomToCursor = true;
     this.controls.addEventListener('change', () => {
       this.requestRender();
+      this.scheduleDistanceRefresh();
       this.onCameraChange?.();
     });
 
@@ -286,7 +299,9 @@ export class Viewer {
     this.tables = compiled.tables;
     this.regions = schematic.regions.map((r) => ({ offset: r.offset, volume: r.volume }));
     this.regionVisible = regionVisible.slice();
-    this.chunkDims = [Math.ceil(schematic.size[0] / CHUNK), Math.ceil(schematic.size[1] / CHUNK), Math.ceil(schematic.size[2] / CHUNK)];
+    this.chunkDims = [Math.ceil(schematic.size[0] / MESH_UNIT), Math.ceil(schematic.size[1] / MESH_UNIT), Math.ceil(schematic.size[2] / MESH_UNIT)];
+    this.meshedBytes = 0;
+    this.meshedCount = 0;
     this.setAppearances(compiled, pack);
     this.setHighlight(null);
     this.updateTransform();
@@ -409,11 +424,11 @@ export class Viewer {
   private keyFor(c: ChunkSlot): { key: string; clip: Clip | null } {
     const clip = this.clip;
     if (!clip) return { key: 'F', clip: null };
-    const origin = [c.cx, c.cy, c.cz][clip.axis] * CHUNK;
-    const lo = Math.max(-1, Math.min(17, clip.min - origin));
-    const hi = Math.max(-2, Math.min(16, clip.max - origin));
-    if (lo > 15 || hi < 0 || lo > hi) return { key: 'E', clip: null };
-    if (lo <= -1 && hi >= 16) return { key: 'F', clip: null };
+    const origin = [c.cx, c.cy, c.cz][clip.axis] * MESH_UNIT;
+    const lo = Math.max(-1, Math.min(MESH_UNIT + 1, clip.min - origin));
+    const hi = Math.max(-2, Math.min(MESH_UNIT, clip.max - origin));
+    if (lo > MESH_UNIT - 1 || hi < 0 || lo > hi) return { key: 'E', clip: null };
+    if (lo <= -1 && hi >= MESH_UNIT) return { key: 'F', clip: null };
     return { key: `${clip.axis}:${lo}:${hi}`, clip: { axis: clip.axis, min: origin + lo, max: origin + hi } };
   }
 
@@ -421,13 +436,18 @@ export class Viewer {
     return `${c.index}/${key}`;
   }
 
-  /** Decides which mesh every chunk should show and schedules the missing ones. */
+  /**
+   * Decides which mesh every chunk should show and schedules the missing ones.
+   * Chunks are processed nearest-first; once the GPU memory or chunk budget is
+   * used up, farther chunks are hidden (an automatic render distance), which
+   * keeps very large schematics within bounded memory.
+   */
   private refreshChunks(): void {
     if (!this.schematic) return;
     const now = performance.now();
     this.queue = [];
     const camPos = this.cameraLocalPosition();
-    const want: { c: ChunkSlot; key: string; clip: Clip | null; dist: number }[] = [];
+    const list: { c: ChunkSlot; key: string; clip: Clip | null; dist: number }[] = [];
     for (const c of this.chunks) {
       const { key, clip } = this.keyFor(c);
       c.wantKey = key;
@@ -435,29 +455,61 @@ export class Viewer {
         this.showChunk(c, null);
         continue;
       }
-      const cached = this.cache.get(this.cacheKey(c, key));
-      if (cached) {
-        cached.lastUsed = now;
-        this.showChunk(c, key);
+      const dx = c.cx * MESH_UNIT + MESH_UNIT / 2 - camPos.x;
+      const dy = c.cy * MESH_UNIT + MESH_UNIT / 2 - camPos.y;
+      const dz = c.cz * MESH_UNIT + MESH_UNIT / 2 - camPos.z;
+      list.push({ c, key, clip, dist: dx * dx + dy * dy + dz * dz });
+    }
+    list.sort((a, b) => a.dist - b.dist);
+    const budget = this.settings.lowPower ? GPU_BUDGET_LOW : GPU_BUDGET;
+    const maxChunks = this.settings.lowPower ? MAX_MESH_UNITS_LOW : MAX_MESH_UNITS;
+    const avg = this.meshedCount ? this.meshedBytes / this.meshedCount : 256 * 1024;
+    let used = 0;
+    let count = 0;
+    let limited = false;
+    for (const w of list) {
+      const cached = this.cache.get(this.cacheKey(w.c, w.key));
+      const size = cached ? cached.bytes : avg;
+      if (count > 0 && (used + size > budget || count >= maxChunks)) {
+        limited = true;
+        w.c.wantKey = 'E';
+        this.showChunk(w.c, null);
         continue;
       }
-      const dx = c.cx * CHUNK + 8 - camPos.x;
-      const dy = c.cy * CHUNK + 8 - camPos.y;
-      const dz = c.cz * CHUNK + 8 - camPos.z;
-      want.push({ c, key, clip, dist: dx * dx + dy * dy + dz * dz });
+      used += size;
+      count++;
+      if (cached) {
+        cached.lastUsed = now;
+        this.showChunk(w.c, w.key);
+      } else if (w.c.requestedKey !== w.key) {
+        this.queue.push({ id: 0, chunk: w.c, key: w.key, clip: w.clip, generation: this.generation });
+      }
     }
-    want.sort((a, b) => a.dist - b.dist);
-    for (const w of want) {
-      if (w.c.requestedKey === w.key) continue; // already in flight
-      this.queue.push({ id: 0, chunk: w.c, key: w.key, clip: w.clip, generation: this.generation });
-    }
+    this.budgetLimited = limited;
     this.pump();
     this.evictCache();
     this.requestRender();
   }
 
+  /** True when some chunks are hidden because of the memory budget. */
+  private budgetLimited = false;
+  private meshedBytes = 0;
+  private meshedCount = 0;
+  private distanceTimer = 0;
+
+  /** Re-evaluates the render distance after the camera stops moving. */
+  private scheduleDistanceRefresh(): void {
+    if (!this.budgetLimited) return;
+    clearTimeout(this.distanceTimer);
+    this.distanceTimer = window.setTimeout(() => this.refreshChunks(), 250);
+  }
+
+  private meshStart = 0;
+  private lastFullMeshMs = 0;
+
   private pump(): void {
     if (!this.workers.length) return;
+    if (this.queue.length && !this.meshStart && this.jobs.size === 0) this.meshStart = performance.now();
     while (this.queue.length) {
       let best = -1;
       for (let i = 0; i < this.workers.length; i++) {
@@ -493,19 +545,25 @@ export class Viewer {
       if (msg.type === 'meshed' && job.generation === this.generation) {
         this.lastMeshMs = msg.ms;
         const entry = this.createMeshes(job.chunk, msg.solid, msg.translucent);
+        this.meshedBytes += entry.bytes;
+        this.meshedCount++;
         const ck = this.cacheKey(job.chunk, job.key);
         const old = this.cache.get(ck);
         if (old) this.disposeEntry(old);
         this.cache.set(ck, entry);
         this.cacheBytes += entry.bytes;
         if (job.chunk.wantKey === job.key) this.showChunk(job.chunk, job.key);
-        this.requestRender();
+        this.requestRenderSoon();
       } else if (msg.type === 'error') {
         console.error('Meshing failed:', msg.message);
       }
     }
     this.pump();
     if (this.queue.length === 0 && this.jobs.size === 0) {
+      if (this.meshStart) {
+        this.lastFullMeshMs = performance.now() - this.meshStart;
+        this.meshStart = 0;
+      }
       this.dropAllStale();
       this.evictCache();
       this.requestRender();
@@ -540,12 +598,15 @@ export class Viewer {
       const quads = data.length / 12;
       this.ensureQuadIndex(quads);
       const geo = new BufferGeometry();
-      geo.setAttribute('aData', new BufferAttribute(data, 3));
+      const attr = new BufferAttribute(data, 3);
+      // The GPU keeps the data; drop the JavaScript copy once uploaded to halve memory use.
+      attr.onUpload(releaseArray);
+      geo.setAttribute('aData', attr);
       geo.setIndex(this.quadIndex);
       geo.setDrawRange(0, quads * 6);
-      geo.boundingSphere = new Sphere(new Vector3(8, 8, 8), 13.9);
+      geo.boundingSphere = new Sphere(new Vector3(MESH_UNIT / 2, MESH_UNIT / 2, MESH_UNIT / 2), (MESH_UNIT * Math.sqrt(3)) / 2 + 0.1);
       const mesh = new Mesh(geo, mat);
-      mesh.position.set(c.cx * CHUNK, c.cy * CHUNK, c.cz * CHUNK);
+      mesh.position.set(c.cx * MESH_UNIT, c.cy * MESH_UNIT, c.cz * MESH_UNIT);
       mesh.matrixAutoUpdate = false;
       mesh.updateMatrix();
       mesh.renderOrder = order;
@@ -702,7 +763,10 @@ export class Viewer {
     const resChanged = s.lowPower !== this.settings.lowPower || s.maxDpr !== this.settings.maxDpr;
     this.settings = { ...s };
     this.applySettings();
-    if (resChanged) this.resize();
+    if (resChanged) {
+      this.resize();
+      this.refreshChunks();
+    }
     if (aoChanged) {
       for (const w of this.workers) this.post(w, { type: 'options', ao: s.ao });
       this.invalidateMeshes();
@@ -883,6 +947,7 @@ export class Viewer {
     move.normalize().multiplyScalar(this.flySpeed * Math.min(dt, 0.1));
     this.camera.position.add(move);
     this.applyFlyRotation();
+    this.scheduleDistanceRefresh();
     this.onCameraChange?.();
     return true;
   }
@@ -1005,6 +1070,17 @@ export class Viewer {
   // Render loop
   // -------------------------------------------------------------------------
 
+  /** Renders at most every ~120 ms while chunks stream in (avoids one frame per chunk). */
+  private requestRenderSoon(): void {
+    if (this.soonTimer) return;
+    this.soonTimer = window.setTimeout(() => {
+      this.soonTimer = 0;
+      this.requestRender();
+    }, 120);
+  }
+
+  private soonTimer = 0;
+
   requestRender(): void {
     if (this.disposed || this.frameRequested) return;
     if (typeof document !== 'undefined' && document.hidden) return;
@@ -1078,6 +1154,8 @@ export class Viewer {
       chunksTotal: this.chunks.length,
       pendingJobs: this.queue.length + this.jobs.size,
       lastMeshMs: this.lastMeshMs,
+      fullMeshMs: this.lastFullMeshMs,
+      distanceLimited: this.budgetLimited,
     };
   }
 
@@ -1087,12 +1165,19 @@ export class Viewer {
   };
 
   private onContextRestored = () => {
-    // Three.js re-uploads GPU resources lazily; just draw again.
-    this.requestRender();
+    // Geometry data was released after upload, so rebuild every mesh.
+    this.clearMeshes();
+    this.generation++;
+    this.jobs.clear();
+    this.inflight = this.inflight.map(() => 0);
+    for (const c of this.chunks) c.requestedKey = null;
+    this.refreshChunks();
   };
 
   dispose(): void {
     this.disposed = true;
+    clearTimeout(this.soonTimer);
+    clearTimeout(this.distanceTimer);
     this.pause();
     this.stopWorkers();
     this.clearMeshes();

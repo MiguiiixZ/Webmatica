@@ -147,6 +147,8 @@ export const S = {
   metricsHeap: 'JS heap',
   metricsChunks: 'Chunks',
   metricsPending: 'Meshing',
+  metricsFullMesh: 'Full mesh',
+  metricsLimited: 'render distance limited',
 
   // Materials
   materialsScope: 'Count',
