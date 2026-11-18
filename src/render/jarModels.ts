@@ -64,13 +64,35 @@ function onlyMeasurement(when: unknown, ignored: Record<string, string>): boolea
   return keys.length > 0 && keys.every((k) => k in ignored);
 }
 
-function modelKey(ref: string): string {
+/**
+ * Texture references are strings ("block/stone", "#side"), or since Minecraft
+ * 1.21.5 objects like {"sprite": "block/glass", "force_translucent": true}.
+ */
+function textureRef(v: unknown): string | null {
+  if (typeof v === 'string') return v;
+  if (v && typeof v === 'object' && typeof (v as { sprite?: unknown }).sprite === 'string') return (v as { sprite: string }).sprite;
+  return null;
+}
+
+function normalizeTextures(t: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!t || typeof t !== 'object') return out;
+  for (const [k, v] of Object.entries(t as Record<string, unknown>)) {
+    const r = textureRef(v);
+    if (r !== null) out[k] = r;
+  }
+  return out;
+}
+
+function modelKey(ref: unknown): string {
+  if (typeof ref !== 'string') return '';
   let r = ref.startsWith('minecraft:') ? ref.slice(10) : ref;
   if (r.startsWith('block/')) r = r.slice(6);
   return r;
 }
 
 function textureName(ref: string): string | null {
+  if (typeof ref !== 'string') return null;
   const r = ref.startsWith('minecraft:') ? ref.slice(10) : ref;
   if (r.startsWith('block/')) return r.slice(6);
   return null;
@@ -125,18 +147,18 @@ export class JarModels {
     const m = (this.models[key] ?? BASE_MODELS[key]) as RawModel | undefined;
     let result: { elements: RawElement[]; textures: Record<string, string> } | null = null;
     if (m) {
-      const parent = m.parent && !m.parent.startsWith('builtin/') ? this.resolve(m.parent, depth + 1) : null;
+      const parent = typeof m.parent === 'string' && !m.parent.startsWith('builtin/') ? this.resolve(m.parent, depth + 1) : null;
       result = {
-        elements: m.elements ?? parent?.elements ?? [],
-        textures: { ...(parent?.textures ?? {}), ...(m.textures ?? {}) },
+        elements: Array.isArray(m.elements) ? m.elements : (parent?.elements ?? []),
+        textures: { ...(parent?.textures ?? {}), ...normalizeTextures(m.textures) },
       };
     }
     this.resolved.set(key, result);
     return result;
   }
 
-  private tex(ref: string | undefined, textures: Record<string, string>): string | null {
-    let r = ref;
+  private tex(ref: unknown, textures: Record<string, string>): string | null {
+    let r = textureRef(ref) ?? undefined;
     for (let i = 0; i < 10 && r && r.startsWith('#'); i++) r = textures[r.slice(1)];
     if (!r || r.startsWith('#')) return null;
     return textureName(r);
@@ -272,7 +294,13 @@ export class JarModels {
       let m = cache.get(key);
       if (m) return m;
       const base = builtinModel(state, key);
-      const g = base.elements.length || base.quads?.length ? this.geometry(state) : null;
+      let g: ReturnType<JarModels['geometry']> = null;
+      try {
+        g = base.elements.length || base.quads?.length ? this.geometry(state) : null;
+      } catch {
+        // Unexpected data in the pack for this block: use the built-in shape.
+        g = null;
+      }
       m = g ? { ...base, elements: g.elements, quads: g.quads, color: undefined } : base;
       cache.set(key, m);
       return m;

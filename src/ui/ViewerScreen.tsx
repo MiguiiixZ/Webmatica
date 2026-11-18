@@ -41,6 +41,35 @@ export interface HoverInfo {
   pick: PickResult;
 }
 
+/**
+ * Compiles block tables with the active texture pack. If the user's pack
+ * cannot be applied (unexpected data), falls back to the bundled textures and
+ * built-in shapes so the schematic still opens.
+ */
+async function compileWithFallback(
+  palette: Schematic['palette'],
+  warn: (m: string | null) => void,
+): Promise<{ comp: CompileResult; pack: TexturePack | null }> {
+  const user = getActivePack();
+  const fallback = async () => {
+    const pack = await loadDefaultPack().catch(() => null);
+    return { comp: compileTables(palette, builtinModel, pack), pack };
+  };
+  if (!user) {
+    warn(null);
+    return fallback();
+  }
+  try {
+    const comp = compileTables(palette, modelProviderFor(user) ?? builtinModel, user);
+    warn(null);
+    return { comp, pack: user };
+  } catch (e) {
+    console.error('Could not apply the texture pack', e);
+    warn(`${S.packApplyFailed} (${(e as Error).message})`);
+    return fallback();
+  }
+}
+
 export default function ViewerScreen(p: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -62,6 +91,7 @@ export default function ViewerScreen(p: Props) {
   const [showHelp, setShowHelp] = useState(false);
   const [cameraMode, setCameraMode] = useState<'orbit' | 'fly'>('orbit');
   const [packVersion, setPackVersion] = useState(0);
+  const [packWarning, setPackWarning] = useState<string | null>(null);
   const settingsRef = useRef(p.settings);
   settingsRef.current = p.settings;
 
@@ -127,16 +157,8 @@ export default function ViewerScreen(p: Props) {
         p.onRename(id, pr.name);
         setStatus(S.loadingTextures);
         await restorePack().catch(() => null);
-        let pack: TexturePack | null = getActivePack();
-        if (!pack) {
-          try {
-            pack = await loadDefaultPack();
-          } catch {
-            pack = null;
-          }
-        }
+        const { comp, pack } = await compileWithFallback(sch.palette, setPackWarning);
         if (cancelled) return;
-        const comp = compileTables(sch.palette, modelProviderFor(pack) ?? builtinModel, pack);
         const v = viewerRef.current;
         if (!v) return;
         v.load(sch, comp, pack, pr.regionVisible);
@@ -162,9 +184,7 @@ export default function ViewerScreen(p: Props) {
   useEffect(() => {
     if (!packVersion || !schematic) return;
     void (async () => {
-      let pack = getActivePack();
-      if (!pack) pack = await loadDefaultPack().catch(() => null);
-      const comp = compileTables(schematic.palette, modelProviderFor(pack) ?? builtinModel, pack);
+      const { comp, pack } = await compileWithFallback(schematic.palette, setPackWarning);
       viewerRef.current?.setTables(comp, pack);
       setCompiled(comp);
     })();
@@ -512,6 +532,14 @@ export default function ViewerScreen(p: Props) {
               onClearMeasure={() => setMeasure([])}
               cameraMode={cameraMode}
             />
+          )}
+          {packWarning && (
+            <div class="overlay chip" style={{ top: 44, left: 8, right: 8, pointerEvents: 'auto' }}>
+              ⚠ {packWarning}{' '}
+              <button class="btn small ghost" onClick={() => setPackWarning(null)}>
+                {S.dismiss}
+              </button>
+            </div>
           )}
           {p.settings.showMetrics && viewerRef.current && schematic && <MetricsOverlay viewer={viewerRef.current} schematic={schematic} />}
           {(status || meshing) && (

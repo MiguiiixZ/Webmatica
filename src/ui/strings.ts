@@ -152,6 +152,7 @@ export const S = {
   packLoaded: (name: string, count: number) => `${name} (${count} textures)`,
   packLoading: 'Reading texture pack…',
   packError: 'Could not read the texture pack',
+  packApplyFailed: 'Your texture pack could not be applied, so the bundled textures are shown. You can remove it in Settings.',
 
   // Metrics
   metricsFps: 'FPS',

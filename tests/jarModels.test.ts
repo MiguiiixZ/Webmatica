@@ -151,3 +151,21 @@ describe('partial packs and signal-level overlays', () => {
     expect(st.elements[1].from).toEqual([8, 8, 0]);
   });
 });
+
+describe('Minecraft 1.21.5+ model format', () => {
+  it('accepts texture references written as objects', () => {
+    const jm2 = new JarModels(
+      {
+        cube_all: models.cube_all,
+        cube: models.cube,
+        glass: { parent: 'minecraft:block/cube_all', textures: { all: { sprite: 'minecraft:block/glass', force_translucent: true }, particle: { sprite: 'block/glass' } } },
+        weird: { parent: 42, textures: { all: 7 }, elements: 'nope' },
+      },
+      { glass: { variants: { '': { model: 'minecraft:block/glass' } } }, stone: { variants: { '': { model: 'block/weird' } } } },
+    );
+    expect(jm2.geometry(S('glass'))!.elements[0].faces.up?.tex).toBe('glass');
+    // Malformed data never throws: the provider falls back to the built-in model.
+    const m = jm2.provider()(S('stone'), 'stone');
+    expect(m.elements.length).toBe(1);
+  });
+});
