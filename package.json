@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "make-example": "tsx scripts/make-example.ts"
+    "make-example": "tsx scripts/make-example.ts",
+    "build-textures": "tsx scripts/build-textures.ts"
   },
   "dependencies": {
     "pako": "^3.0.3",
@@ -21,7 +22,9 @@
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
     "@types/node": "^26.6.6",
+    "@types/pngjs": "^6.0.5",
     "@types/three": "^0.187.0",
+    "pngjs": "^7.0.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vite": "^8.3.8",

@@ -6,7 +6,7 @@ import { parseSponge, spongeRoot } from './sponge';
 import { isStructure, parseStructure } from './structure';
 import { SchematicError, type SchematicData } from './types';
 
-export const SUPPORTED_EXTENSIONS = ['.litematic', '.schem', '.nbt', '.schematic'];
+export { SUPPORTED_EXTENSIONS } from './extensions';
 
 /**
  * Parses any supported schematic file. The format is detected from the

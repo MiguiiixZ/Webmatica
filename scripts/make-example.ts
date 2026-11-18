@@ -67,12 +67,12 @@ for (let y = 2; y <= 4; y++) {
 }
 // Windows
 for (const x of [4, 8]) {
-  set(x, 3, Z0, 'glass_pane', { east: 'false', west: 'false', north: 'false', south: 'false', waterlogged: 'false' });
-  set(x, 3, Z1, 'glass_pane', { east: 'false', west: 'false', north: 'false', south: 'false', waterlogged: 'false' });
+  set(x, 3, Z0, 'glass_pane', { east: 'true', west: 'true', north: 'false', south: 'false', waterlogged: 'false' });
+  set(x, 3, Z1, 'glass_pane', { east: 'true', west: 'true', north: 'false', south: 'false', waterlogged: 'false' });
 }
 for (const z of [4, 7]) {
-  set(X0, 3, z, 'glass_pane', { east: 'false', west: 'false', north: 'false', south: 'false', waterlogged: 'false' });
-  set(X1, 3, z, 'glass_pane', { east: 'false', west: 'false', north: 'false', south: 'false', waterlogged: 'false' });
+  set(X0, 3, z, 'glass_pane', { east: 'false', west: 'false', north: 'true', south: 'true', waterlogged: 'false' });
+  set(X1, 3, z, 'glass_pane', { east: 'false', west: 'false', north: 'true', south: 'true', waterlogged: 'false' });
 }
 // Door (front side, facing south toward the path)
 set(6, 2, Z1, 'oak_door', { facing: 'north', half: 'lower', hinge: 'left', open: 'false', powered: 'false' });
