@@ -161,13 +161,14 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; pad
 .mat-tools { display: flex; flex-direction: column; gap: 8px; }
 .mat-list { display: flex; flex-direction: column; }
 .mat-row {
-  display: grid; grid-template-columns: 18px 14px 1fr auto; gap: 8px; align-items: center; padding: 5px 4px;
+  display: grid; grid-template-columns: 18px 28px 1fr auto; gap: 8px; align-items: center; padding: 5px 4px;
   border-bottom: 1px solid #262a33; cursor: pointer;
 }
 .mat-row:hover { background: var(--bg-3); }
 .mat-row.selected { background: #2a3140; outline: 1px solid var(--accent-2); }
 .mat-row.done .mat-name { color: var(--text-3); text-decoration: line-through; }
 .swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(255, 255, 255, 0.15); }
+.mat-icon { width: 28px; height: 28px; image-rendering: pixelated; display: block; }
 .mat-main { display: flex; flex-direction: column; min-width: 0; }
 .mat-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mat-main .split { color: var(--text-3); font-size: 11px; }

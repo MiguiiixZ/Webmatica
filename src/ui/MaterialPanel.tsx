@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'preact/hooks';
 import type { Schematic } from '../parser/types';
 import type { ProjectState } from '../app/project';
-import { FLAG_CUBE, QUAD_STRIDE, type CompileResult } from '../render/blockTables';
-import { rgbaToCss } from '../render/colors';
+import type { CompileResult } from '../render/blockTables';
+import type { TexturePack } from '../render/texturePack';
+import { shortName } from '../parser/types';
+import { IconRenderer } from './blockIcons';
 import { visibleRange } from '../render/viewState';
 import { forEachBlock, layerPaletteCounts } from '../materials/layerStats';
 import { formatBreakdown } from '../materials/items';
@@ -18,6 +20,7 @@ interface Props {
   highlight: Set<number> | null;
   setHighlight: (s: Set<number> | null) => void;
   compiled: CompileResult;
+  pack: TexturePack | null;
 }
 
 function download(name: string, content: string, type: string): void {
@@ -53,7 +56,7 @@ function safeFileName(s: string): string {
   return s.replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '') || 'schematic';
 }
 
-export function MaterialPanel({ schematic, project, update, highlight, setHighlight, compiled }: Props) {
+export function MaterialPanel({ schematic, project, update, highlight, setHighlight, compiled, pack }: Props) {
   const [scope, setScope] = useState<Scope>('all');
   const [sort, setSort] = useState<SortKey>('count');
   const [query, setQuery] = useState('');
@@ -99,29 +102,16 @@ export function MaterialPanel({ schematic, project, update, highlight, setHighli
     return l;
   }, [list, sort, collected, query, hideCollected]);
 
-  const swatch = useMemo(() => {
-    const { tables, registry } = compiled;
-    return (e: MaterialEntry): string => {
-      const id = e.paletteIds[0];
-      let app = 0;
-      if (tables.flags[id] & FLAG_CUBE) app = tables.cubeFaces[id * 6 + 1] & 0xfff;
-      else {
-        // Prefer a side face (or a plant quad) over top/bottom edges for the swatch.
-        const q0 = tables.quadStart[id];
-        const q1 = tables.quadStart[id + 1];
-        let pick = q1 > q0 ? q0 : -1;
-        for (let q = q0; q < q1; q++) {
-          if ((tables.quads[q * QUAD_STRIDE + 12] & 7) >= 2) {
-            pick = q;
-            break;
-          }
-        }
-        if (pick >= 0) app = tables.quads[pick * QUAD_STRIDE + 13];
-      }
-      const a = registry.list[app];
-      return a ? rgbaToCss(a.color) : '#777';
-    };
-  }, [compiled]);
+  const icons = useMemo(() => new IconRenderer(compiled, pack, schematic.palette), [compiled, pack, schematic]);
+  /** Icon of the block that best represents an item (the block with the same id when there is one). */
+  const iconFor = (e: MaterialEntry): string => {
+    const same = e.paletteIds.find((id) => shortName(schematic.palette[id].name) === e.item);
+    try {
+      return icons.icon(same ?? e.paletteIds[0]);
+    } catch {
+      return '';
+    }
+  };
 
   const totalItems = list.reduce((s, e) => s + e.total, 0);
   const missingTypes = list.filter((e) => !collected.has(e.item)).length;
@@ -215,7 +205,7 @@ export function MaterialPanel({ schematic, project, update, highlight, setHighli
                 onClick={(ev) => ev.stopPropagation()}
                 onChange={() => toggleCollected(e.item)}
               />
-              <span class="swatch" style={{ background: swatch(e) }} />
+              <img class="mat-icon" src={iconFor(e)} alt="" width={28} height={28} loading="lazy" />
               <span class="mat-main">
                 <span class="mat-name">{e.name}</span>
                 <span class="split mono">{formatBreakdown(e.total, e.stack)}</span>

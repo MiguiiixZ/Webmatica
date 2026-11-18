@@ -92,6 +92,7 @@ export default function ViewerScreen(p: Props) {
   const [cameraMode, setCameraMode] = useState<'orbit' | 'fly'>('orbit');
   const [packVersion, setPackVersion] = useState(0);
   const [packWarning, setPackWarning] = useState<string | null>(null);
+  const [renderPack, setRenderPack] = useState<TexturePack | null>(null);
   const settingsRef = useRef(p.settings);
   settingsRef.current = p.settings;
 
@@ -168,6 +169,7 @@ export default function ViewerScreen(p: Props) {
         projectRef.current = pr;
         setSchematic(sch);
         setCompiled(comp);
+        setRenderPack(pack);
         setProject({ ...pr });
         saver.current.schedule(pr, 10);
         setStatus(null);
@@ -187,6 +189,7 @@ export default function ViewerScreen(p: Props) {
       const { comp, pack } = await compileWithFallback(schematic.palette, setPackWarning);
       viewerRef.current?.setTables(comp, pack);
       setCompiled(comp);
+      setRenderPack(pack);
     })();
   }, [packVersion]);
 
@@ -206,13 +209,12 @@ export default function ViewerScreen(p: Props) {
   }, [schematic, project?.regionVisible]);
 
   const axis = project?.layer.axis ?? 1;
-  const doneSet = useMemo(() => new Set(project?.doneLayers[String(axis)] ?? []), [project?.doneLayers, axis]);
+  /** The layer right above the current one: what you will build next. */
   const nextLayer = useMemo(() => {
-    if (!counts) return null;
-    const c = counts[axis];
-    for (let i = 0; i < c.length; i++) if (c[i] > 0 && !doneSet.has(i)) return i;
-    return null;
-  }, [counts, axis, doneSet]);
+    if (!project || !schematic || project.layer.mode === 'all') return null;
+    const n = project.layer.current + 1;
+    return n < schematic.size[project.layer.axis] ? n : null;
+  }, [project?.layer, schematic]);
 
   // Push layer state to the viewer.
   useEffect(() => {
@@ -243,19 +245,19 @@ export default function ViewerScreen(p: Props) {
     viewerRef.current?.setHighlight(highlight);
   }, [highlight]);
 
-  // Progress cache for the start screen (fraction of blocks in done Y layers).
+  // Progress for the start screen: share of blocks below the current layer (what is built when you are on it).
   useEffect(() => {
-    if (!project || !counts) return;
+    if (!project || !counts || project.layer.mode === 'all') return;
     const c = counts[axis];
-    let done = 0;
+    let below = 0;
     let total = 0;
     for (let i = 0; i < c.length; i++) {
       total += c[i];
-      if (doneSet.has(i)) done += c[i];
+      if (i < project.layer.current) below += c[i];
     }
-    const progress = total ? done / total : 0;
+    const progress = total ? below / total : 0;
     if (Math.abs(progress - project.progress) > 1e-9) update({ progress });
-  }, [doneSet, counts]);
+  }, [project?.layer, counts]);
 
   // ---- Layer helpers --------------------------------------------------------
   const layerLen = schematic && project ? schematic.size[project.layer.axis] : 1;
@@ -281,57 +283,6 @@ export default function ViewerScreen(p: Props) {
     },
     [schematic, setLayer],
   );
-
-  /** Marks the current layer as done and moves to the next unfinished layer above it. */
-  const doneAndNext = useCallback(() => {
-    update((pr) => {
-      if (!schematic || !counts) return {};
-      const axisKey = String(pr.layer.axis);
-      const len = schematic.size[pr.layer.axis];
-      const c = counts[pr.layer.axis];
-      const cur = Math.min(pr.layer.current, len - 1);
-      const set = new Set(pr.doneLayers[axisKey] ?? []);
-      set.add(cur);
-      let next = cur;
-      for (let i = cur + 1; i < len; i++) {
-        if (c[i] > 0 && !set.has(i)) {
-          next = i;
-          break;
-        }
-      }
-      if (next === cur) for (let i = 0; i < len; i++) if (c[i] > 0 && !set.has(i)) {
-        next = i;
-        break;
-      }
-      return {
-        doneLayers: { ...pr.doneLayers, [axisKey]: [...set].sort((a, b) => a - b) },
-        layer: { ...pr.layer, current: next, mode: pr.layer.mode === 'all' ? 'below' : pr.layer.mode },
-      };
-    });
-  }, [update, schematic, counts]);
-
-  /** Undo: unmark the current layer if it is done, otherwise go back one layer and unmark it. */
-  const undoDone = useCallback(() => {
-    update((pr) => {
-      const axisKey = String(pr.layer.axis);
-      const set = new Set(pr.doneLayers[axisKey] ?? []);
-      let target = pr.layer.current;
-      if (!set.has(target)) {
-        // Go back to the nearest finished layer below.
-        target = -1;
-        for (let i = pr.layer.current - 1; i >= 0; i--) if (set.has(i)) {
-          target = i;
-          break;
-        }
-        if (target < 0) target = Math.max(0, pr.layer.current - 1);
-      }
-      set.delete(target);
-      return {
-        doneLayers: { ...pr.doneLayers, [axisKey]: [...set].sort((a, b) => a - b) },
-        layer: { ...pr.layer, current: target, mode: pr.layer.mode === 'all' ? 'below' : pr.layer.mode },
-      };
-    });
-  }, [update]);
 
   // ---- Pointer: hover and measure -------------------------------------------
   const pending = useRef<{ x: number; y: number } | null>(null);
@@ -398,19 +349,6 @@ export default function ViewerScreen(p: Props) {
         case 'L':
           if (pr) setLayer({ mode: MODES[(MODES.indexOf(pr.layer.mode) + 1) % MODES.length] });
           break;
-        case 'd':
-        case 'D':
-          if (pr && v?.cameraMode !== 'fly') doneAndNext();
-          break;
-        case 'u':
-        case 'U':
-        case 'Backspace':
-          if (pr) undoDone();
-          break;
-        case 'n':
-        case 'N':
-          if (nextLayer !== null && pr) setLayer({ current: nextLayer, mode: pr.layer.mode === 'all' ? 'below' : pr.layer.mode });
-          break;
         case 'c':
         case 'C':
           if (v) {
@@ -458,7 +396,7 @@ export default function ViewerScreen(p: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [stepLayer, setLayer, doneAndNext, undoDone, nextLayer, schematic, leftOpen, rightOpen, p.setSettings]);
+  }, [stepLayer, setLayer, schematic, leftOpen, rightOpen, p.setSettings]);
 
   // ---- Render -----------------------------------------------------------------------
   const range = project && schematic ? visibleRange(project.layer, layerLen) : null;
@@ -540,12 +478,8 @@ export default function ViewerScreen(p: Props) {
                 project={project}
                 schematic={schematic}
                 counts={counts}
-                doneSet={doneSet}
-                nextLayer={nextLayer}
                 setLayer={setLayer}
                 stepLayer={stepLayer}
-                doneAndNext={doneAndNext}
-                undoDone={undoDone}
                 update={update}
               />
             </div>
@@ -564,7 +498,6 @@ export default function ViewerScreen(p: Props) {
               {project.origin && project.layer.mode !== 'all' && (
                 <span class="muted"> · {S.worldHeight(AXIS_NAMES[project.layer.axis], project.origin[project.layer.axis] + project.layer.current)}</span>
               )}
-              {doneSet.has(project.layer.current) && project.layer.mode !== 'all' && <span style={{ color: 'var(--ok)' }}> ✓</span>}
             </div>
           )}
           {schematic && compiled && (
@@ -619,6 +552,7 @@ export default function ViewerScreen(p: Props) {
                   highlight={highlight}
                   setHighlight={setHighlight}
                   compiled={compiled}
+                  pack={renderPack}
                 />
               )}
               {rightTab === 'info' && <InfoPanel schematic={schematic} project={project} />}

@@ -8,12 +8,8 @@ interface Props {
   project: ProjectState;
   schematic: Schematic;
   counts: Uint32Array[];
-  doneSet: Set<number>;
-  nextLayer: number | null;
   setLayer: (patch: Partial<LayerState>) => void;
   stepLayer: (delta: number) => void;
-  doneAndNext: () => void;
-  undoDone: () => void;
   update: (patch: Partial<ProjectState> | ((p: ProjectState) => Partial<ProjectState>)) => void;
 }
 
@@ -25,25 +21,22 @@ const MODE_LABELS: [LayerMode, string][] = [
   ['range', S.modeRange],
 ];
 
-export function LayerPanel({ project, schematic, counts, doneSet, nextLayer, setLayer, stepLayer, doneAndNext, undoDone, update }: Props) {
+export function LayerPanel({ project, schematic, counts, setLayer, stepLayer, update }: Props) {
   const l = project.layer;
   const len = schematic.size[l.axis];
   const c = counts[l.axis];
   const axisName = AXIS_NAMES[l.axis];
   const [min, max] = visibleRange(l, len);
   const cur = Math.min(l.current, len - 1);
-  const filled = Array.from(c).reduce((n, v) => n + (v > 0 ? 1 : 0), 0);
-  let doneBlocks = 0;
+  // Progress is derived from the current layer: everything below it counts as built.
+  const atLayer = l.mode !== 'all';
+  let belowBlocks = 0;
   let totalBlocks = 0;
-  let doneCount = 0;
   for (let i = 0; i < c.length; i++) {
     totalBlocks += c[i];
-    if (doneSet.has(i)) {
-      doneBlocks += c[i];
-      if (c[i] > 0) doneCount++;
-    }
+    if (atLayer && i < cur) belowBlocks += c[i];
   }
-  const pct = totalBlocks ? ((doneBlocks / totalBlocks) * 100).toFixed(1).replace(/\.0$/, '') + '%' : '0%';
+  const pct = totalBlocks ? ((belowBlocks / totalBlocks) * 100).toFixed(1).replace(/\.0$/, '') + '%' : '0%';
   const maxCount = Math.max(1, ...c);
 
   return (
@@ -75,21 +68,14 @@ export function LayerPanel({ project, schematic, counts, doneSet, nextLayer, set
         {l.mode !== 'range' && (
           <>
             <div class="layer-big">
-              <button class="btn" onClick={undoDone} title={S.undoDoneHint} aria-label={S.undoDone}>
-                ↶ {S.undoDone}
-              </button>
               <button class="btn icon" onClick={() => stepLayer(-1)} title={`${S.layerDown} (PageDown)`} aria-label={S.layerDown}>
                 −
               </button>
               <div class="num mono" title={S.layerOf(cur + 1, len)}>
                 {l.mode === 'all' ? '–' : `${axisName} ${cur}`}
-                {l.mode !== 'all' && doneSet.has(cur) && <span style={{ color: 'var(--ok)', fontSize: 14 }}> ✓</span>}
               </div>
               <button class="btn icon" onClick={() => stepLayer(1)} title={`${S.layerUp} (PageUp)`} aria-label={S.layerUp}>
                 +
-              </button>
-              <button class="btn primary" onClick={doneAndNext} disabled={nextLayer === null && doneSet.has(cur)} title={S.doneNextHint} aria-label={S.doneNext}>
-                {S.doneNext} ✓
               </button>
             </div>
             <input
@@ -143,9 +129,7 @@ export function LayerPanel({ project, schematic, counts, doneSet, nextLayer, set
         <div class="progress-bar">
           <div style={{ width: pct }} />
         </div>
-        <div class="dim">
-          {S.completed(pct)} · {S.layersDone(doneCount, filled)}
-        </div>
+        <div class="dim">{atLayer ? S.progressAtLayer(pct, belowBlocks, totalBlocks) : S.progressPickLayer}</div>
         <div
           class="layer-strip"
           title={S.layer}
@@ -159,22 +143,12 @@ export function LayerPanel({ project, schematic, counts, doneSet, nextLayer, set
             <div
               key={i}
               style={{
-                background: v === 0 ? 'transparent' : doneSet.has(i) ? 'var(--ok)' : i === nextLayer ? 'var(--accent)' : `rgba(170,175,188,${0.25 + (0.5 * v) / maxCount})`,
+                background: v === 0 ? 'transparent' : atLayer && i < cur ? 'var(--ok)' : `rgba(170,175,188,${0.25 + (0.5 * v) / maxCount})`,
                 outline: i === cur && l.mode !== 'all' ? '1px solid #fff' : undefined,
               }}
             />
           ))}
         </div>
-        {doneSet.size > 0 && (
-          <button
-            class="btn small ghost"
-            onClick={() => {
-              if (confirm(S.resetProgressConfirm)) update((pr) => ({ doneLayers: { ...pr.doneLayers, [String(l.axis)]: [] } }));
-            }}
-          >
-            {S.resetProgress}
-          </button>
-        )}
       </div>
 
       <OriginEditor project={project} update={update} />

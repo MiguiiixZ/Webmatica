@@ -28,8 +28,8 @@ exactly where you left them.
 - Modes: all layers, single layer, up to layer N, from layer N up, and a range. Axis Y (default), X or Z.
 - `PageUp`/`PageDown` or `]`/`[` to move, a slider, and a clickable layer strip.
 - Dim layers below, highlight the current layer, highlight the next layer to build.
-- **Done** (`D`) marks the current layer as finished and jumps to the next one to build; **Undo** (`U`/`Backspace`)
-  goes back to the last finished layer and unmarks it. Percentage complete and a layer strip — saved locally.
+- Progress follows the current layer: the percentage of blocks below it (what is built when you are on that
+  layer), with a layer strip. The current layer is saved locally.
 
 **Material List**
 - Grouped by item with the exact rules Litematica uses (doors/beds/tall plants counted once, double slabs ×2,
@@ -38,6 +38,7 @@ exactly where you left them.
 - Every amount split into **shulker boxes + stacks + items**, respecting real stack sizes (64, 16 or 1).
   Example: `2,820 = 1 shulker + 17 stacks + 4` (a shulker box holds 27 stacks).
 - Count the whole schematic, only the visible layers, or one region.
+- Inventory-style isometric icons drawn from the active textures (your `client.jar` if loaded).
 - Collected checklist (saved), sort by amount/name/status, search, highlight an item's blocks in 3D.
 - Export to CSV or plain text, or copy to the clipboard.
 
@@ -53,9 +54,6 @@ exactly where you left them.
 | `PageDown` / `[` | Layer down |
 | `Home` / `End` | First / last layer |
 | `L` | Cycle layer mode |
-| `D` | Mark layer as done and go to the next one |
-| `U` / `Backspace` | Undo: back to the last finished layer |
-| `N` | Go to next layer to build |
 | `C` | Orbit / free camera |
 | `W A S D`, `Space` / `Shift` | Move in free camera |
 | `R` | Reset camera |
