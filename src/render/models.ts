@@ -587,7 +587,9 @@ function liquidModel(n: string, level: number): ModelDef {
   const h = source ? 14 : level >= 8 ? 16 : Math.max(2, Math.round(((8 - level) / 9) * 16));
   const el = box([0, 0, 0], [16, h, 16], lava ? 'lava_still' : 'water_still');
   if (h < 16) delete el.faces.up?.cull;
-  const opts: Partial<ModelDef> = { layer: lava ? RenderLayer.Solid : RenderLayer.Translucent, cullGroup: n };
+  // Hide faces only between liquid blocks of the same height; between different
+  // heights the side that sticks out must be drawn, or you can see through it.
+  const opts: Partial<ModelDef> = { layer: lava ? RenderLayer.Solid : RenderLayer.Translucent, cullGroup: `${n}:${h}` };
   if (!source) return model([el], opts);
   delete el.faces.up?.cull;
   // Frame on top of the source block (a pseudo texture with a fixed flat color).
