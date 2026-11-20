@@ -1,5 +1,7 @@
 # Webmatica
 
+**Live site: https://webmatica.pages.dev**
+
 A lightweight, in-browser 3D viewer for **Litematica** schematics (`.litematic`), made to sit in a second window
 or on a second screen while you build in Minecraft. Open a schematic, step through it layer by layer, tick off
 materials as you collect them, and switch back to the game with Alt+Tab. Your view, layer and progress are
