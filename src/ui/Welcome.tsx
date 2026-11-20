@@ -123,9 +123,9 @@ export function Welcome(p: Props) {
                 {r.progress > 0 && (
                   <>
                     <div class="progress-bar">
-                      <div style={{ width: `${Math.round(r.progress * 100)}%` }} />
+                      <div style={{ width: `${Math.floor(r.progress * 100)}%` }} />
                     </div>
-                    <div class="dim">{S.completed(`${Math.round(r.progress * 100)}%`)}</div>
+                    <div class="dim">{S.completed(`${Math.floor(r.progress * 100)}%`)}</div>
                   </>
                 )}
               </div>

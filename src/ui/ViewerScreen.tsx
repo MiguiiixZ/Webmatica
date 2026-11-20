@@ -245,7 +245,7 @@ export default function ViewerScreen(p: Props) {
     viewerRef.current?.setHighlight(highlight);
   }, [highlight]);
 
-  // Progress for the start screen: share of blocks below the current layer (what is built when you are on it).
+  // Progress for the start screen: share of blocks up to and including the current layer (what is built once it is finished).
   useEffect(() => {
     if (!project || !counts || project.layer.mode === 'all') return;
     const c = counts[axis];
@@ -253,7 +253,7 @@ export default function ViewerScreen(p: Props) {
     let total = 0;
     for (let i = 0; i < c.length; i++) {
       total += c[i];
-      if (i < project.layer.current) below += c[i];
+      if (i <= project.layer.current) below += c[i];
     }
     const progress = total ? below / total : 0;
     if (Math.abs(progress - project.progress) > 1e-9) update({ progress });

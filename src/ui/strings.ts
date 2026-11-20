@@ -96,7 +96,7 @@ export const S = {
   originHint: 'Enter where the schematic is placed in your world to see world coordinates.',
   originClear: 'Clear',
   completed: (pct: string) => `${pct} complete`,
-  progressAtLayer: (pct: string, below: number, total: number) => `${pct} built if you are on this layer (${below.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} blocks are below it)`,
+  progressAtLayer: (pct: string, below: number, total: number) => `${pct} built once this layer is finished (${below.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} blocks up to this layer)`,
   progressPickLayer: 'Choose a layer to see how much is built up to it.',
   blocksInLayer: (n: number) => `${n.toLocaleString('en-US')} blocks in this layer`,
 

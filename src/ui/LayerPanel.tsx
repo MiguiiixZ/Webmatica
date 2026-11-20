@@ -28,15 +28,16 @@ export function LayerPanel({ project, schematic, counts, setLayer, stepLayer, up
   const axisName = AXIS_NAMES[l.axis];
   const [min, max] = visibleRange(l, len);
   const cur = Math.min(l.current, len - 1);
-  // Progress is derived from the current layer: everything below it counts as built.
+  // Progress is derived from the current layer: it and everything below it count as built.
   const atLayer = l.mode !== 'all';
   let belowBlocks = 0;
   let totalBlocks = 0;
   for (let i = 0; i < c.length; i++) {
     totalBlocks += c[i];
-    if (atLayer && i < cur) belowBlocks += c[i];
+    if (atLayer && i <= cur) belowBlocks += c[i];
   }
-  const pct = totalBlocks ? ((belowBlocks / totalBlocks) * 100).toFixed(1).replace(/\.0$/, '') + '%' : '0%';
+  // Rounded down so 100% only shows once the last layer with blocks is reached.
+  const pct = totalBlocks ? (Math.floor((belowBlocks / totalBlocks) * 1000) / 10).toFixed(1).replace(/\.0$/, '') + '%' : '0%';
   const maxCount = Math.max(1, ...c);
 
   return (
@@ -143,7 +144,7 @@ export function LayerPanel({ project, schematic, counts, setLayer, stepLayer, up
             <div
               key={i}
               style={{
-                background: v === 0 ? 'transparent' : atLayer && i < cur ? 'var(--ok)' : `rgba(170,175,188,${0.25 + (0.5 * v) / maxCount})`,
+                background: v === 0 ? 'transparent' : atLayer && i <= cur ? 'var(--ok)' : `rgba(170,175,188,${0.25 + (0.5 * v) / maxCount})`,
                 outline: i === cur && l.mode !== 'all' ? '1px solid #fff' : undefined,
               }}
             />
