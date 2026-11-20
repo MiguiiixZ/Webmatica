@@ -4,7 +4,7 @@
  * atlas used as the app's default texture set, and computes the average color
  * of every texture for the flat-color mode.
  *
- * Only textures/block/*.png are used. The pack's models and blockstates are
+ * Only textures/block/*.png and entity/chest/{normal,trapped,ender}.png are used. The pack's models and blockstates are
  * NOT used. Changes made to the original files (required notice under
  * CC BY-SA 4.0): animated textures are reduced to their first frame, random
  * variants (e.g. oak_leaves1.png) and OptiFine emissive overlays (*_e.png)
@@ -16,6 +16,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
 import { TINTS, tintFor } from '../src/render/tints';
+import { CHEST_FACES, CHEST_VARIANTS, chestTextureName, composeChestFaces } from '../src/render/chestTextures';
 
 const src = process.argv[2];
 if (!src) {
@@ -37,14 +38,27 @@ const keep = [...names]
   })
   .sort();
 
+// Chests use entity textures; add closed-chest face tiles built from them.
+type Img = { width: number; height: number; data: Uint8Array | Buffer };
+const sources: { name: string; png: Img }[] = keep.map((name) => ({ name, png: PNG.sync.read(readFileSync(join(dir, `${name}.png`))) }));
+for (const v of CHEST_VARIANTS) {
+  const file = join(src, `assets/minecraft/textures/entity/chest/${v}.png`);
+  try {
+    const faces = composeChestFaces(PNG.sync.read(readFileSync(file)), TILE);
+    for (const face of CHEST_FACES) sources.push({ name: chestTextureName(v, face), png: { width: TILE, height: TILE, data: faces[face] } });
+  } catch {
+    console.warn(`No chest texture: ${file}`);
+  }
+}
+const atlasNames = sources.map((s) => s.name);
+
 const COLS = 32;
-const rows = Math.ceil(keep.length / COLS);
+const rows = Math.ceil(sources.length / COLS);
 const atlas = new PNG({ width: COLS * TILE, height: rows * TILE });
 const colors: Record<string, string> = {};
 const skipped: string[] = [];
 
-keep.forEach((name, i) => {
-  const png = PNG.sync.read(readFileSync(join(dir, `${name}.png`)));
+sources.forEach(({ name, png }, i) => {
   const w = png.width;
   if (w % TILE !== 0 || png.height < w) {
     skipped.push(name);
@@ -89,6 +103,6 @@ keep.forEach((name, i) => {
 const outDir = 'public/textures/pixel-perfection';
 mkdirSync(outDir, { recursive: true });
 writeFileSync(join(outDir, 'atlas.png'), PNG.sync.write(atlas, { colorType: 6 }));
-writeFileSync(join(outDir, 'atlas.json'), JSON.stringify({ tile: TILE, cols: COLS, names: keep }));
+writeFileSync(join(outDir, 'atlas.json'), JSON.stringify({ tile: TILE, cols: COLS, names: atlasNames }));
 writeFileSync('src/render/data/pp-colors.json', JSON.stringify(colors));
-console.log(`Packed ${keep.length} textures (${skipped.length} skipped: ${skipped.join(', ')}). Tints: ${Object.keys(TINTS).length}.`);
+console.log(`Packed ${atlasNames.length} textures (${skipped.length} skipped: ${skipped.join(', ')}). Tints: ${Object.keys(TINTS).length}.`);

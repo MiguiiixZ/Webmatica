@@ -870,8 +870,12 @@ function computeModel(state: BlockState): ModelDef {
     return model([box([0, 0, 0], [16, 6, 16], tbs(top, 'daylight_detector_side', 'daylight_detector_side'))]);
   }
   if (n === 'chest' || n === 'trapped_chest' || n === 'ender_chest' || n.endsWith('copper_chest')) {
-    const color = n === 'ender_chest' ? '1e2a2c' : n.includes('copper') ? 'b4684d' : '9c6b30';
-    return model([box([1, 0, 1], [15, 14, 15], n === 'ender_chest' ? 'obsidian' : 'chest_entity')], { color });
+    // Faces built from the chest entity texture (see chestTextures.ts); front faces north before rotation.
+    const variant = n === 'ender_chest' ? 'ender' : n === 'trapped_chest' ? 'trapped' : 'normal';
+    const fallback = variant === 'ender' ? 'obsidian' : 'oak_planks';
+    const t = (face: string) => `chest_${variant}_${face}|chest_normal_${face}|${fallback}`;
+    const el = box([1, 0, 1], [15, 14, 15], { up: t('top'), down: t('bottom'), north: t('front'), south: t('back'), west: t('left'), east: t('right') });
+    return model(rotateElements([el], turnsFor(p.facing)));
   }
   if (n.endsWith('_bed')) {
     const d = dyeOf(n) ?? 'red';

@@ -23,8 +23,9 @@ Authors:  Hugh "XSSheep" Rutland (original Pixel Perfection); StonePendant,
 Source:   https://github.com/Athemis/PixelPerfectionCE
 License:  Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
           https://creativecommons.org/licenses/by-sa/4.0/
-Changes:  Only textures/block/*.png are used (no models, blockstates or other
-          files). Animated textures were cut to their first frame, random and
+Changes:  Only textures/block/*.png and the chest entity textures are used (no
+          models, blockstates or other files). Chest faces were cut and rearranged
+          from entity/chest/{normal,trapped,ender}.png. Animated textures were cut to their first frame, random and
           OptiFine variants were left out, and the tiles were packed into one
           atlas. The adapted files are shared under CC BY-SA 4.0.
 Notes:    The project states that it accepts only original or compatibly

@@ -5,6 +5,7 @@
  * language file. Nothing leaves the browser.
  */
 import { listZip, readEntry } from '../util/zip';
+import { CHEST_FACES, CHEST_VARIANTS, chestTextureName, composeChestFaces } from '../render/chestTextures';
 
 export interface ProcessedPack {
   name: string;
@@ -65,6 +66,7 @@ self.onmessage = async (e: MessageEvent<{ bytes: Uint8Array; name: string }>) =>
       return i >= 0 ? n.slice(i) : null;
     };
     const textures: { name: string; png: Uint8Array }[] = [];
+    const chests: { variant: string; png: Uint8Array }[] = [];
     const models: Record<string, unknown> = {};
     const blockstates: Record<string, unknown> = {};
     let lang: Record<string, string> | null = null;
@@ -74,6 +76,11 @@ self.onmessage = async (e: MessageEvent<{ bytes: Uint8Array; name: string }>) =>
       if (!n) continue;
       if (n.startsWith('assets/minecraft/textures/blocks/')) legacy = true;
       // Subfolders are allowed (e.g. "block/tripwire/tripwire.png" -> "tripwire/tripwire").
+      const chest = /^assets\/minecraft\/textures\/entity\/chest\/([a-z_]+)\.png$/.exec(n);
+      if (chest && (CHEST_VARIANTS as readonly string[]).includes(chest[1])) {
+        chests.push({ variant: chest[1], png: await readEntry(bytes, ent) });
+        continue;
+      }
       if (n.startsWith(TEX) && n.endsWith('.png')) {
         textures.push({ name: n.slice(TEX.length, -4), png: await readEntry(bytes, ent) });
       } else if (n.startsWith(MODELS) && n.endsWith('.json')) {
@@ -123,12 +130,25 @@ self.onmessage = async (e: MessageEvent<{ bytes: Uint8Array; name: string }>) =>
       warnings.push(`Textures were downscaled from ${tile}x to 64x.`);
       tile = 64;
     }
-    const pixels = new Uint8Array(decoded.length * tile * tile * 4);
+    // Chests use an entity texture: turn it into block-face tiles at the pack's resolution.
+    const chestTiles: { name: string; px: Uint8Array }[] = [];
+    for (const c of chests) {
+      try {
+        const img = await decode(c.png);
+        const faces = composeChestFaces({ width: img.w, height: img.h, data: img.data }, tile);
+        for (const face of CHEST_FACES) chestTiles.push({ name: chestTextureName(c.variant, face), px: faces[face] });
+      } catch {
+        /* skip undecodable chest texture */
+      }
+    }
+    const count = decoded.length + chestTiles.length;
+    const pixels = new Uint8Array(count * tile * tile * 4);
     decoded.forEach((d, i) => pixels.set(firstFrame(d.img, tile), i * tile * tile * 4));
+    chestTiles.forEach((c, i) => pixels.set(c.px, (decoded.length + i) * tile * tile * 4));
     const result: ProcessedPack = {
       name: name.replace(/\.(jar|zip)$/i, ''),
       tile,
-      names: decoded.map((d) => d.name),
+      names: [...decoded.map((d) => d.name), ...chestTiles.map((c) => c.name)],
       pixels,
       models,
       blockstates,

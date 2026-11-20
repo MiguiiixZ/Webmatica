@@ -15,6 +15,8 @@ Changes made for Webmatica (atlas.png / atlas.json):
 - Animated textures were reduced to their first frame.
 - Random variants (e.g. oak_leaves1.png) and OptiFine emissive overlays
   (*_e.png) were left out.
+- Closed-chest face tiles were composed from entity/chest/normal.png,
+  trapped.png and ender.png (lid, base and latch parts cut and rearranged).
 - The remaining 16x16 tiles were repacked into a single PNG atlas.
 
 This adapted atlas is distributed under the same license, CC BY-SA 4.0.
