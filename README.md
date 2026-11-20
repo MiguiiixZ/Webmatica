@@ -9,7 +9,9 @@ exactly where you left them.
 - **Light on resources.** Nothing is drawn unless something changes; nothing runs while the tab is hidden.
 - **Works from a link.** No install. Chrome, Edge, Firefox and Safari (recent versions).
 
-> Webmatica is not affiliated with Mojang Studios, Microsoft, or the author of Litematica.
+> **NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
+> Webmatica is a free fan project (no ads, no accounts, no payments) and is not affiliated with Mojang Studios,
+> Microsoft, or the author of Litematica.
 
 ## Features
 

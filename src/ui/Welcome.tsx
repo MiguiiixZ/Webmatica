@@ -141,6 +141,8 @@ export function Welcome(p: Props) {
           ))}
         </div>
 
+        <div class="disclaimer" role="note">{S.officialDisclaimer}</div>
+
         <div class="footer">
           <div>{S.textureCredit}</div>
           <div>{S.notAffiliated}</div>

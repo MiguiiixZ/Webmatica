@@ -81,6 +81,7 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; pad
 .recent-item .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .progress-bar { height: 4px; background: var(--bg-4); border-radius: 2px; overflow: hidden; margin-top: 6px; }
 .progress-bar > div { height: 100%; background: var(--ok); }
+.disclaimer { padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-2); color: var(--text-2); font-size: 12px; font-weight: 600; letter-spacing: 0.3px; text-align: center; }
 .footer { color: var(--text-3); font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
 .banner { padding: 10px 12px; border-radius: var(--radius); background: #3a1f22; border: 1px solid #6b2b30; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .banner.warn { background: #3a3220; border-color: #6b5a2b; }

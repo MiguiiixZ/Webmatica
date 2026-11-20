@@ -77,6 +77,9 @@ export function InfoPanel({ schematic, project }: { schematic: Schematic; projec
           </dl>
         </div>
       )}
+      <div class="section">
+        <div class="dim">{S.officialDisclaimer}</div>
+      </div>
       {schematic.warnings.length > 0 && (
         <div class="section">
           <h4>{S.infoWarnings}</h4>
