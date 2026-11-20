@@ -6,7 +6,7 @@
  *
  * Unwrap layout (in 64x64 pixels): lid box at (0,0) size 14x5x14, base box at
  * (0,19) size 14x10x14, latch box at (0,0) size 2x4x1. For a box at (u,v) with
- * size (w,h,d): top/bottom regions at (u+d, v) and (u+d+w, v), side strip at
+ * size (w,h,d): bottom region at (u+d, v) and top region at (u+d+w, v), side strip at
  * v+d: west (u), north (u+d), east (u+d+w), south/front (u+2d+w).
  *
  * Output tiles match the built-in chest model: a box from (1,0,1) to (15,14,15),
@@ -34,7 +34,10 @@ function sourceFor(face: ChestFace, fx: number, fy: number): [number, number] | 
   const sideX: Record<string, number> = { front: 42, back: 14, left: 0, right: 28 };
   switch (face) {
     case 'top':
-      return [14 + fx, fy];
+      // The visible top is the lid's "up" region (u+d+w = 28..42, not 14..28, which is
+      // the inside of the lid). Row 0 is the front edge, and columns run from the
+      // model's +X side because the model faces +Z: mirror horizontally.
+      return [28 + (13 - fx), fy];
     case 'bottom':
       return [14 + fx, 19 + fy];
     default: {

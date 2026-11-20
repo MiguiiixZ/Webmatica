@@ -12,8 +12,9 @@ const at = (tile: Uint8Array, x: number, y: number) => [tile[(y * 16 + x) * 4], 
 describe('chest entity texture to block faces', () => {
   const f = composeChestFaces(coordImage(), 16);
 
-  it('takes the top from the lid and the bottom from the base', () => {
-    expect(at(f.top, 1, 1)).toEqual([14, 0]);
+  it('takes the top from the outside of the lid and the bottom from the base', () => {
+    expect(at(f.top, 1, 1)).toEqual([41, 0]); // lid top region, mirrored
+    expect(at(f.top, 14, 1)).toEqual([28, 0]);
     expect(at(f.bottom, 1, 1)).toEqual([14, 19]);
   });
 
