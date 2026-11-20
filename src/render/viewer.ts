@@ -742,7 +742,8 @@ export class Viewer {
     u.uMax.value = this.clip ? max : 1e9;
     u.uCur.value = Math.min(Math.max(0, layer.current), len - 1);
     u.uNext.value = nextLayer ?? -1e9;
-    u.uDimBelow.value = layer.dimBelow && layer.mode !== 'single';
+    // Dimming and highlights only apply when a layer is chosen (not in "All layers").
+    u.uDimBelow.value = layer.dimBelow && layer.mode !== 'single' && layer.mode !== 'all';
     u.uHiCur.value = layer.highlightCurrent && layer.mode !== 'all';
     u.uHiNext.value = layer.highlightNext && nextLayer !== null;
     const changed = !prev !== !this.clip || (prev && this.clip && (prev.axis !== this.clip.axis || prev.min !== this.clip.min || prev.max !== this.clip.max));

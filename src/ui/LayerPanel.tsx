@@ -111,16 +111,16 @@ export function LayerPanel({ project, schematic, counts, setLayer, stepLayer, up
           </div>
         )}
 
-        <label class="check">
-          <input type="checkbox" checked={l.dimBelow} onChange={(e) => setLayer({ dimBelow: (e.target as HTMLInputElement).checked })} />
+        <label class={`check${l.mode === 'all' || l.mode === 'single' ? ' disabled' : ''}`}>
+          <input type="checkbox" disabled={l.mode === 'all' || l.mode === 'single'} checked={l.dimBelow} onChange={(e) => setLayer({ dimBelow: (e.target as HTMLInputElement).checked })} />
           {S.dimBelow}
         </label>
-        <label class="check">
-          <input type="checkbox" checked={l.highlightCurrent} onChange={(e) => setLayer({ highlightCurrent: (e.target as HTMLInputElement).checked })} />
+        <label class={`check${l.mode === 'all' ? ' disabled' : ''}`}>
+          <input type="checkbox" disabled={l.mode === 'all'} checked={l.highlightCurrent} onChange={(e) => setLayer({ highlightCurrent: (e.target as HTMLInputElement).checked })} />
           {S.highlightCurrent}
         </label>
-        <label class="check">
-          <input type="checkbox" checked={l.highlightNext} onChange={(e) => setLayer({ highlightNext: (e.target as HTMLInputElement).checked })} />
+        <label class={`check${l.mode === 'all' ? ' disabled' : ''}`}>
+          <input type="checkbox" disabled={l.mode === 'all'} checked={l.highlightNext} onChange={(e) => setLayer({ highlightNext: (e.target as HTMLInputElement).checked })} />
           {S.highlightNext}
         </label>
       </div>

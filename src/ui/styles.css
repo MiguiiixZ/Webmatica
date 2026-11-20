@@ -54,6 +54,7 @@ input[type='number'] { width: 76px; }
 input[type='range'] { width: 100%; accent-color: var(--accent); }
 input[type='checkbox'] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
 label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 2px 0; }
+label.check.disabled { opacity: 0.45; cursor: default; }
 
 .muted { color: var(--text-2); }
 .dim { color: var(--text-3); font-size: 12px; }
