@@ -149,6 +149,8 @@ export function Welcome(p: Props) {
           <div>
             <a href="https://github.com/MiguiiixZ/Webmatica" target="_blank" rel="noopener noreferrer">{S.sourceCode}</a> ·{' '}
             <a href={`${import.meta.env.BASE_URL}LICENSES.txt`} target="_blank" rel="noopener noreferrer">{S.licenses}</a>
+            {' · '}
+            <span class="mono">{S.buildInfo(__BUILD_ID__, __BUILD_DATE__)}</span>
           </div>
         </div>
       </div>

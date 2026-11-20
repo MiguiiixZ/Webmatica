@@ -39,6 +39,7 @@ export const S = {
   textureCredit: 'Default textures: Pixel Perfection CE (CC BY-SA 4.0).',
   close: 'Close',
   sourceCode: 'Source code',
+  buildInfo: (id: string, date: string) => `Version ${id} (${date})`,
   justNow: 'just now',
   minutesAgo: (m: number) => `${m} min ago`,
   hoursAgo: (h: number) => `${h} h ago`,
@@ -162,6 +163,7 @@ export const S = {
   packDown: 'Move down (lower priority)',
   packStackHint: 'The pack on top wins; anything it does not include comes from the packs below.',
   packBundledLast: 'Missing textures fall back to the bundled ones.',
+  packOutdated: 'Imported with an older version of Webmatica: remove it and import it again to get chest textures.',
   packApplyFailed: 'Your texture pack could not be applied, so the bundled textures are shown. You can remove it in Settings.',
 
   // Metrics

@@ -20,6 +20,8 @@ export interface PackInfo {
   hasModels: boolean;
   hasLanguage: boolean;
   warnings: string[];
+  /** True for a full game jar imported before chest textures were extracted (re-import to get them). */
+  outdated: boolean;
 }
 
 /** IndexedDB keys: the ordered stack (bottom first). "active" is the old single-pack key. */
@@ -68,6 +70,7 @@ function infoOf(p: ProcessedPack): PackInfo {
     hasModels: Object.keys(p.blockstates).length > 50 && Object.keys(p.models).length > 50,
     hasLanguage: !!p.lang,
     warnings: p.warnings,
+    outdated: p.names.length > 500 && Object.keys(p.blockstates).length > 500 && !p.names.includes('chest_normal_front'),
   };
 }
 

@@ -79,6 +79,7 @@ export function InfoPanel({ schematic, project }: { schematic: Schematic; projec
       )}
       <div class="section">
         <div class="dim">{S.officialDisclaimer}</div>
+        <div class="dim mono">Webmatica · {S.buildInfo(__BUILD_ID__, __BUILD_DATE__)}</div>
       </div>
       {schematic.warnings.length > 0 && (
         <div class="section">

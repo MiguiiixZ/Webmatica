@@ -44,6 +44,7 @@ export function TexturePackSection() {
                   {p.hasLanguage ? ` ${S.packNamesUsed}` : ''}
                   {p.warnings.map((w) => ` ⚠ ${w}`).join('')}
                 </div>
+                {p.outdated && <div class="err">⚠ {S.packOutdated}</div>}
               </div>
               <button class="btn small icon" disabled={busy || i === 0} title={S.packUp} onClick={() => run(() => movePack(i, -1))}>
                 ↑
