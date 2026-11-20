@@ -26,14 +26,15 @@ exactly where you left them.
   like Litematica's overlay) and block grid lines.
 - Hover a block to see its name, block state and coordinates (relative, and world coordinates once you enter the
   schematic's origin). Measure distances between two blocks.
+- A small compass in the top-right corner shows which way you are facing (north is −Z, as in the game).
 - Rotate and mirror the view. Multiple regions with independent visibility. Several schematics open as tabs.
 
 **Layers** (the main feature)
 - Modes: all layers, single layer, up to layer N, from layer N up, and a range. Axis Y (default), X or Z.
 - `PageUp`/`PageDown` or `]`/`[` to move, a slider, and a clickable layer strip.
 - Dim layers below, highlight the current layer, highlight the next layer to build.
-- Progress follows the current layer: the percentage of blocks below it (what is built when you are on that
-  layer), with a layer strip. The current layer is saved locally.
+- Progress follows the current layer: the percentage of blocks up to and including it (what is built once that
+  layer is finished, so the last layer is 100%), with a layer strip. The current layer is saved locally.
 
 **Material List**
 - Grouped by item with the exact rules Litematica uses (doors/beds/tall plants counted once, double slabs ×2,

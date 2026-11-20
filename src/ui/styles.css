@@ -148,8 +148,15 @@ label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; pad
 }
 .hover-info .name { font-weight: 600; }
 .hover-info .props { color: var(--text-2); font-size: 12px; overflow-wrap: anywhere; }
-.metrics { right: 8px; top: 8px; font-size: 12px; min-width: 190px; }
+.metrics { right: 8px; top: 64px; font-size: 12px; min-width: 190px; }
 .metrics .kv { gap: 1px 10px; }
+.compass { right: 8px; top: 8px; width: 48px; height: 48px; pointer-events: auto; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+.compass-bg { fill: rgba(21, 23, 28, 0.86); stroke: var(--line); stroke-width: 1; }
+.compass-north { fill: #e5484d; }
+.compass-south { fill: var(--text-2); opacity: 0.7; }
+.compass-mark { fill: var(--text); }
+.compass-letter { fill: var(--text-2); font: 700 9px/1 system-ui, sans-serif; text-anchor: middle; dominant-baseline: central; }
+.compass-letter.n { fill: var(--text); }
 .layer-badge { left: 8px; top: 8px; font-size: 13px; }
 .loading-overlay {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(21, 23, 28, 0.6);

@@ -166,6 +166,10 @@ export const S = {
   packOutdated: 'Imported with an older version of Webmatica: remove it and import it again to get chest textures.',
   packApplyFailed: 'Your texture pack could not be applied, so the bundled textures are shown. You can remove it in Settings.',
 
+  // Compass
+  compassDirs: ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'],
+  compassFacing: (dir: string) => `Facing ${dir}`,
+
   // Metrics
   metricsFps: 'FPS',
   metricsFrame: 'Frame',

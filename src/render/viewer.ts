@@ -32,6 +32,7 @@ import {
   UnsignedByteType,
   Vector2,
   Vector3,
+  Euler,
   WebGLRenderer,
   DoubleSide,
   FrontSide,
@@ -178,6 +179,10 @@ export class Viewer {
   /** Called after every rendered frame (for metrics) and whenever the camera moves. */
   onFrame: (() => void) | null = null;
   onCameraChange: (() => void) | null = null;
+  /** Camera heading in degrees clockwise from north (-Z), reported only when it changes. */
+  onHeading: ((deg: number) => void) | null = null;
+  private lastHeading = NaN;
+  private readonly headingEuler = new Euler(0, 0, 0, 'YXZ');
   onMeshProgress: ((pending: number, total: number) => void) | null = null;
 
   constructor(canvas: HTMLCanvasElement, settings: RenderSettings) {
@@ -1104,6 +1109,21 @@ export class Viewer {
     this.dragging = false;
   }
 
+  /** Heading for the compass: north is -Z in the scene (the game's world axes, also after rotate/mirror). */
+  getHeading(): number {
+    this.headingEuler.setFromQuaternion(this.camera.quaternion, 'YXZ');
+    const deg = (-this.headingEuler.y * 180) / Math.PI;
+    return ((deg % 360) + 360) % 360;
+  }
+
+  private reportHeading(): void {
+    if (!this.onHeading) return;
+    const h = this.getHeading();
+    if (Math.abs(h - this.lastHeading) < 0.2) return;
+    this.lastHeading = h;
+    this.onHeading(h);
+  }
+
   private frame = (time: number) => {
     this.frameRequested = false;
     if (this.disposed) return;
@@ -1120,6 +1140,7 @@ export class Viewer {
       this.fpsTime = time;
     }
     this.onFrame?.();
+    this.reportHeading();
     if (moving) this.requestRender();
     else {
       // Throttled re-prioritization of chunk meshing while the camera moves.

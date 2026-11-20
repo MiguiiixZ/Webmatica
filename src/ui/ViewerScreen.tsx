@@ -19,6 +19,7 @@ import { SettingsPanel } from './SettingsPanel';
 import { MaterialPanel } from './MaterialPanel';
 import { StatusOverlay } from './StatusOverlay';
 import { MetricsOverlay } from './MetricsOverlay';
+import { Compass } from './Compass';
 import { ShortcutsModal } from './ShortcutsModal';
 
 interface Props {
@@ -519,6 +520,7 @@ export default function ViewerScreen(p: Props) {
               </button>
             </div>
           )}
+          {viewerRef.current && schematic && <Compass viewer={viewerRef.current} />}
           {p.settings.showMetrics && viewerRef.current && schematic && <MetricsOverlay viewer={viewerRef.current} schematic={schematic} />}
           {(status || meshing) && (
             <div class="loading-overlay" style={meshing ? { background: 'transparent', alignItems: 'flex-start', paddingTop: 48 } : undefined}>
