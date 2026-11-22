@@ -42,7 +42,7 @@ export interface RenderTables {
   fluid: Uint8Array;
   /** Surface appearance of liquid blocks. */
   fluidApp: Uint16Array;
-  /** Appearance of the frame on top of source blocks. */
+  /** Appearance of the frame on top of source blocks (0 = no frame). */
   fluidMarker: Uint16Array;
 }
 
@@ -169,7 +169,11 @@ export function compileTables(palette: BlockState[], provider: ModelProvider, so
       flags[i] = f | FLAG_FLUID;
       continue;
     }
-    if (i > 0 && (st.props.waterlogged === 'true' || ALWAYS_WATER.has(st.name.replace(/^minecraft:/, '')))) fluid[i] = FLUID_WATER;
+    if (i > 0 && (st.props.waterlogged === 'true' || ALWAYS_WATER.has(st.name.replace(/^minecraft:/, '')))) {
+      // Waterlogged blocks: the block plus a water source around it (no source frame).
+      fluid[i] = FLUID_WATER | FLUID_DRAWN;
+      fluidApp[i] = registry.get('water_still');
+    }
     if (m.elements.length === 0 && !m.quads?.length) {
       flags[i] = f | FLAG_EMPTY;
       continue;

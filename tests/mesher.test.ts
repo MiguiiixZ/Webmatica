@@ -146,6 +146,15 @@ describe('mesher', () => {
       expect(out.solid.length).toBe(0);
     });
 
+    it('draws the water inside waterlogged blocks, without a source frame', () => {
+      const pal = [S('air'), S('oak_slab', { type: 'bottom', waterlogged: 'true' }), S('oak_slab', { type: 'bottom', waterlogged: 'false' })];
+      const wet = build([1, 1, 1], pal, () => 1).mesher.mesh(0, 0, 0, [true], null);
+      expect(quads(wet.translucent)).toBe(6); // top + 4 sides + bottom, no frame strips
+      expect(quads(wet.solid)).toBeGreaterThan(0); // the slab itself
+      const dry = build([1, 1, 1], pal, () => 2).mesher.mesh(0, 0, 0, [true], null);
+      expect(quads(dry.translucent)).toBe(0);
+    });
+
     it('fills to the top under the same liquid', () => {
       const { mesher } = build([1, 2, 1], lavaPal, () => 1);
       const v = vertices(mesher.mesh(0, 0, 0, [true], null).solid);

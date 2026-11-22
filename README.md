@@ -28,7 +28,8 @@ exactly where you left them.
   schematic's origin). Measure distances between two blocks.
 - A small compass in the top-right corner shows which way you are facing (north is −Z, as in the game).
 - Water and lava are drawn like in the game: the surface slopes between neighbouring levels (same corner-height
-  formula as Minecraft), falling liquid fills the block, and source blocks get a bright frame on top.
+  formula as Minecraft), falling liquid fills the block, and source blocks get a bright frame on top. Waterlogged blocks (and kelp,
+  seagrass) show the water around them.
 - Rotate and mirror the view. Multiple regions with independent visibility. Several schematics open as tabs.
 
 **Layers** (the main feature)
@@ -260,8 +261,7 @@ To compare on your own PC:
   beds, signs, banners, heads, shulker boxes) are always approximate boxes.
 - Biome tints use fixed plains colors. Animated textures show their first frame. No lighting other than simple face
   shading and ambient occlusion.
-- Waterlogged blocks are drawn without the water inside them (they still shape the surface of nearby water).
-  Liquid surfaces use the still texture, without the flow direction animation.
+- Liquid surfaces use the still texture, without the flow direction animation.
 - Container contents (chests, shulker boxes) are not part of the Material List, matching Litematica's schematic
   material list. Litematica's "available in inventory" columns are not available because there is no game connection.
 - The Material List follows the rules of the current Litematica source code (1.21.x); older Litematica releases

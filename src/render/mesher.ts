@@ -19,7 +19,7 @@
  * Quads use a shared index pattern (0,1,2, 0,2,3).
  */
 import { BlockVolume, CHUNK, CHUNK_VOLUME } from '../parser/volume';
-import { CULL_NONE, FLAG_CUBE, FLAG_EMPTY, FLAG_FLUID, FLAG_OCCLUDES, FLAG_TRANSLUCENT, FLUID_DRAWN, QUAD_STRIDE, type RenderTables } from './blockTables';
+import { CULL_NONE, FLAG_CUBE, FLAG_EMPTY, FLAG_OCCLUDES, FLAG_TRANSLUCENT, FLUID_DRAWN, FLUID_LAVA, QUAD_STRIDE, type RenderTables } from './blockTables';
 
 export interface MeshRegion {
   offset: [number, number, number];
@@ -255,9 +255,10 @@ export class Mesher {
         let pi = (y + 1) * P2 + (z + 1) * P + 1;
         for (let x = 0; x < N; x++, pi++) {
           const id = pad[pi];
-          if (!(flags[id] & FLAG_FLUID) || !(fluid[id] & FLUID_DRAWN)) continue;
+          if (!(fluid[id] & FLUID_DRAWN)) continue;
           const kind = fluid[id] & 3;
-          const out = flags[id] & FLAG_TRANSLUCENT ? this.translucent : this.solid;
+          // Water is translucent, lava opaque (also for waterlogged blocks, whose own model is drawn separately).
+          const out = kind === FLUID_LAVA ? this.solid : this.translucent;
           const covered = this.fluidKind(pi + dUp) === kind;
           // Corner heights: NW, NE, SE, SW.
           let hNW = 1;
@@ -291,7 +292,7 @@ export class Mesher {
           if (!covered && !(flags[above] & FLAG_OCCLUDES && Math.min(nw, ne, se, sw) >= 32)) {
             this.quad(out, id, app, 1, bx, by + sw, z1, x1, by + se, z1, x1, by + ne, bz, bx, by + nw, bz);
             // Bright frame on source blocks, following the surface.
-            if (((fluid[id] >> 2) & 15) === 0) this.sourceFrame(out, id, fluidMarker[id], bx, by, bz, nw, ne, se, sw);
+            if (fluidMarker[id] && ((fluid[id] >> 2) & 15) === 0) this.sourceFrame(out, id, fluidMarker[id], bx, by, bz, nw, ne, se, sw);
           }
           // Sides: hidden by the same liquid (heights match there) or an opaque block.
           if (this.sideVisible(pi + dN, kind)) this.quad(out, id, app, 2, x1, by, bz, bx, by, bz, bx, by + nw, bz, x1, by + ne, bz);
