@@ -9,7 +9,8 @@
  *     (or by a neighbour of the same cull group, e.g. glass next to glass),
  *     merging coplanar faces with identical appearance and lighting
  *     (greedy meshing);
- *  3. copies precompiled quads of non-cubic blocks, skipping culled faces.
+ *  3. copies precompiled quads of non-cubic blocks, skipping culled faces;
+ *  4. draws liquids with sloped surfaces from the neighbouring levels, like the game.
  *
  * Vertex format: 3 x uint32 per vertex (12 bytes)
  *   w0: x | y << 10 | z << 20 | ao << 30   (low 10 bits of positions in 1/32 block, unit-local)
@@ -18,7 +19,7 @@
  * Quads use a shared index pattern (0,1,2, 0,2,3).
  */
 import { BlockVolume, CHUNK, CHUNK_VOLUME } from '../parser/volume';
-import { CULL_NONE, FLAG_CUBE, FLAG_EMPTY, FLAG_OCCLUDES, FLAG_TRANSLUCENT, QUAD_STRIDE, type RenderTables } from './blockTables';
+import { CULL_NONE, FLAG_CUBE, FLAG_EMPTY, FLAG_FLUID, FLAG_OCCLUDES, FLAG_TRANSLUCENT, FLUID_DRAWN, QUAD_STRIDE, type RenderTables } from './blockTables';
 
 export interface MeshRegion {
   offset: [number, number, number];
@@ -132,6 +133,7 @@ export class Mesher {
     this.translucent.length = 0;
     if (this.fill(cx, cy, cz, visible, clip)) {
       this.emitQuads();
+      this.emitFluids();
       for (let d = 0; d < 6; d++) this.greedy(d);
     }
     return { solid: this.solid.result(), translucent: this.translucent.result() };
@@ -192,6 +194,165 @@ export class Mesher {
         }
       }
     }
+  }
+
+  // ---- Liquids ---------------------------------------------------------------
+
+  /** Liquid kind (1 water, 2 lava) of the block at padded index i, or 0. */
+  private fluidKind(i: number): number {
+    return this.tables.fluid[this.padded[i]] & 3;
+  }
+
+  /**
+   * Height (0..1) of the liquid at padded index i for a liquid of `kind`, as in the
+   * game's LiquidBlockRenderer: 1 if the same liquid is above, otherwise its own
+   * height ((8 - level) / 9; sources and falling liquid 8/9). 0 for air and other
+   * non-solid blocks, -1 for solid blocks (ignored when averaging).
+   */
+  private fluidHeight(i: number, kind: number): number {
+    const id = this.padded[i];
+    const fl = this.tables.fluid[id];
+    if ((fl & 3) === kind) {
+      if (this.fluidKind(i + P2) === kind) return 1;
+      const level = (fl >> 2) & 15;
+      return level === 0 || level >= 8 ? 8 / 9 : (8 - level) / 9;
+    }
+    if (id === 0) return 0;
+    return this.tables.flags[id] & (FLAG_OCCLUDES | FLAG_CUBE) ? -1 : 0;
+  }
+
+  /** Corner height from the block, its two side neighbours and the diagonal (game algorithm). */
+  private cornerHeight(own: number, a: number, b: number, diag: number, kind: number): number {
+    if (a >= 1 || b >= 1) return 1;
+    let sum = 0;
+    let weight = 0;
+    const add = (h: number) => {
+      if (h >= 0.8) {
+        sum += h * 10;
+        weight += 10;
+      } else if (h >= 0) {
+        sum += h;
+        weight += 1;
+      }
+    };
+    if (a > 0 || b > 0) {
+      const c = this.fluidHeight(diag, kind);
+      if (c >= 1) return 1;
+      add(c);
+    }
+    add(own);
+    add(a);
+    add(b);
+    return weight ? sum / weight : 0;
+  }
+
+  private emitFluids(): void {
+    const { flags, fluid, fluidApp, fluidMarker } = this.tables;
+    const pad = this.padded;
+    const [dDown, dUp, dN, dS, dW, dE] = NEIGHBOR;
+    for (let y = 0; y < N; y++) {
+      for (let z = 0; z < N; z++) {
+        let pi = (y + 1) * P2 + (z + 1) * P + 1;
+        for (let x = 0; x < N; x++, pi++) {
+          const id = pad[pi];
+          if (!(flags[id] & FLAG_FLUID) || !(fluid[id] & FLUID_DRAWN)) continue;
+          const kind = fluid[id] & 3;
+          const out = flags[id] & FLAG_TRANSLUCENT ? this.translucent : this.solid;
+          const covered = this.fluidKind(pi + dUp) === kind;
+          // Corner heights: NW, NE, SE, SW.
+          let hNW = 1;
+          let hNE = 1;
+          let hSE = 1;
+          let hSW = 1;
+          if (!covered) {
+            const own = this.fluidHeight(pi, kind);
+            const hN = this.fluidHeight(pi + dN, kind);
+            const hS = this.fluidHeight(pi + dS, kind);
+            const hW = this.fluidHeight(pi + dW, kind);
+            const hE = this.fluidHeight(pi + dE, kind);
+            hNW = this.cornerHeight(own, hN, hW, pi + dN + dW, kind);
+            hNE = this.cornerHeight(own, hN, hE, pi + dN + dE, kind);
+            hSE = this.cornerHeight(own, hS, hE, pi + dS + dE, kind);
+            hSW = this.cornerHeight(own, hS, hW, pi + dS + dW, kind);
+          }
+          // Heights in 1/32 block.
+          const nw = Math.round(hNW * 32);
+          const ne = Math.round(hNE * 32);
+          const se = Math.round(hSE * 32);
+          const sw = Math.round(hSW * 32);
+          const bx = x * 32;
+          const by = y * 32;
+          const bz = z * 32;
+          const app = fluidApp[id];
+          const x1 = bx + 32;
+          const z1 = bz + 32;
+          // Top surface (skipped under the same liquid or a solid block when full).
+          const above = pad[pi + dUp];
+          if (!covered && !(flags[above] & FLAG_OCCLUDES && Math.min(nw, ne, se, sw) >= 32)) {
+            this.quad(out, id, app, 1, bx, by + sw, z1, x1, by + se, z1, x1, by + ne, bz, bx, by + nw, bz);
+            // Bright frame on source blocks, following the surface.
+            if (((fluid[id] >> 2) & 15) === 0) this.sourceFrame(out, id, fluidMarker[id], bx, by, bz, nw, ne, se, sw);
+          }
+          // Sides: hidden by the same liquid (heights match there) or an opaque block.
+          if (this.sideVisible(pi + dN, kind)) this.quad(out, id, app, 2, x1, by, bz, bx, by, bz, bx, by + nw, bz, x1, by + ne, bz);
+          if (this.sideVisible(pi + dS, kind)) this.quad(out, id, app, 3, bx, by, z1, x1, by, z1, x1, by + se, z1, bx, by + sw, z1);
+          if (this.sideVisible(pi + dW, kind)) this.quad(out, id, app, 4, bx, by, bz, bx, by, z1, bx, by + sw, z1, bx, by + nw, bz);
+          if (this.sideVisible(pi + dE, kind)) this.quad(out, id, app, 5, x1, by, z1, x1, by, bz, x1, by + ne, bz, x1, by + se, z1);
+          if (this.sideVisible(pi + dDown, kind)) this.quad(out, id, app, 0, bx, by, z1, bx, by, bz, x1, by, bz, x1, by, z1);
+        }
+      }
+    }
+  }
+
+  private sideVisible(i: number, kind: number): boolean {
+    const nb = this.padded[i];
+    if (nb === 0) return true;
+    if (this.tables.flags[nb] & FLAG_OCCLUDES) return false;
+    return (this.tables.fluid[nb] & 3) !== kind;
+  }
+
+  /** Four strips around the top of a source block, slightly above the sloped surface. */
+  private sourceFrame(out: Buf, id: number, app: number, bx: number, by: number, bz: number, nw: number, ne: number, se: number, sw: number): void {
+    const h = (u: number, v: number) => {
+      // Bilinear height at (u, v) in 0..1 across the block (u = x, v = z), plus a small lift.
+      const n = nw + (ne - nw) * u;
+      const s = sw + (se - sw) * u;
+      return by + Math.round(n + (s - n) * v) + 1;
+    };
+    const w = 3 / 32; // 1.5 px
+    const strip = (u0: number, v0: number, u1: number, v1: number) =>
+      this.quad(out, id, app, 1, bx + Math.round(u0 * 32), h(u0, v1), bz + Math.round(v1 * 32), bx + Math.round(u1 * 32), h(u1, v1), bz + Math.round(v1 * 32), bx + Math.round(u1 * 32), h(u1, v0), bz + Math.round(v0 * 32), bx + Math.round(u0 * 32), h(u0, v0), bz + Math.round(v0 * 32));
+    strip(0, 0, 1, w);
+    strip(0, 1 - w, 1, 1);
+    strip(0, w, w, 1 - w);
+    strip(1 - w, w, 1, 1 - w);
+  }
+
+  /** Emits one quad with automatic (position-projected) UVs. Corners counter-clockwise from outside, in 1/32 block. */
+  private quad(
+    out: Buf,
+    id: number,
+    app: number,
+    normal: number,
+    ax: number, ay: number, az: number,
+    bx: number, by: number, bz: number,
+    cx: number, cy: number, cz: number,
+    dx: number, dy: number, dz: number,
+  ): void {
+    out.reserve(12);
+    const data = out.data;
+    let o = out.length;
+    const w1 = (normal | (app << 16)) >>> 0;
+    const put = (px: number, py: number, pz: number) => {
+      data[o++] = ((px & 1023) | ((py & 1023) << 10) | ((pz & 1023) << 20) | (3 << 30)) >>> 0;
+      data[o++] = w1;
+      data[o++] = (id | ((px >> 10) << 16) | ((py >> 10) << 17) | ((pz >> 10) << 18)) >>> 0;
+    };
+    put(ax, ay, az);
+    put(bx, by, bz);
+    put(cx, cy, cz);
+    put(dx, dy, dz);
+    out.length = o;
   }
 
   /**

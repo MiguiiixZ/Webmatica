@@ -54,4 +54,19 @@ export interface ModelDef {
   cullGroup?: string;
   /** Flat color override (RRGGBB or RRGGBBAA) for faces without a usable texture. */
   color?: string;
+  /**
+   * Liquid block: drawn by the mesher with sloped surfaces that depend on the
+   * neighbouring liquid levels (like the game), instead of from `elements`.
+   */
+  fluid?: FluidDef;
+}
+
+export interface FluidDef {
+  kind: 'water' | 'lava';
+  /** Block state level: 0 = source, 1..7 = flowing, 8+ = falling. */
+  level: number;
+  /** Surface texture candidates. */
+  tex: string;
+  /** Flat-color pseudo texture for the frame drawn on top of source blocks. */
+  marker: string;
 }

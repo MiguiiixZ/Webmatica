@@ -15,6 +15,16 @@ export const FLAG_CUBE = 2;
 export const FLAG_TRANSLUCENT = 4;
 export const FLAG_EMPTY = 8;
 export const CULL_NONE = 7;
+/** Liquid block drawn by Mesher.emitFluids. */
+export const FLAG_FLUID = 16;
+
+/** fluid[] encoding: kind (1 water, 2 lava) | level (0..8, 8 = falling) << 2 | FLUID_DRAWN. */
+export const FLUID_WATER = 1;
+export const FLUID_LAVA = 2;
+export const FLUID_DRAWN = 64;
+
+/** Blocks that always contain water (they count as water sources for the surface of neighbouring water). */
+const ALWAYS_WATER = new Set(['kelp', 'kelp_plant', 'seagrass', 'tall_seagrass', 'bubble_column']);
 
 /** Table data sent to mesh workers. */
 export interface RenderTables {
@@ -28,6 +38,12 @@ export interface RenderTables {
   quadStart: Uint32Array;
   /** QUAD_STRIDE uint16 per quad, see packQuad. */
   quads: Uint16Array;
+  /** Liquid per palette entry (see FLUID_*): liquid blocks and waterlogged blocks; 0 = none. */
+  fluid: Uint8Array;
+  /** Surface appearance of liquid blocks. */
+  fluidApp: Uint16Array;
+  /** Appearance of the frame on top of source blocks. */
+  fluidMarker: Uint16Array;
 }
 
 export interface Appearance {
@@ -123,6 +139,9 @@ export function compileTables(palette: BlockState[], provider: ModelProvider, so
   const cubeFaces = new Uint16Array(n * 6);
   const quadStart = new Uint32Array(n + 1);
   const quads: number[] = [];
+  const fluid = new Uint8Array(n);
+  const fluidApp = new Uint16Array(n);
+  const fluidMarker = new Uint16Array(n);
   const groups = new Map<string, number>();
   const models: ModelDef[] = [];
 
@@ -142,6 +161,15 @@ export function compileTables(palette: BlockState[], provider: ModelProvider, so
       }
       cullGroup[i] = g;
     }
+    if (m.fluid) {
+      const kind = m.fluid.kind === 'lava' ? FLUID_LAVA : FLUID_WATER;
+      fluid[i] = kind | (Math.min(8, Math.max(0, m.fluid.level)) << 2) | FLUID_DRAWN;
+      fluidApp[i] = registry.get(m.fluid.tex);
+      fluidMarker[i] = registry.get(m.fluid.marker);
+      flags[i] = f | FLAG_FLUID;
+      continue;
+    }
+    if (i > 0 && (st.props.waterlogged === 'true' || ALWAYS_WATER.has(st.name.replace(/^minecraft:/, '')))) fluid[i] = FLUID_WATER;
     if (m.elements.length === 0 && !m.quads?.length) {
       flags[i] = f | FLAG_EMPTY;
       continue;
@@ -183,7 +211,7 @@ export function compileTables(palette: BlockState[], provider: ModelProvider, so
   quadStart[n] = quads.length / QUAD_STRIDE;
 
   return {
-    tables: { paletteSize: n, flags, cullGroup, cubeFaces, quadStart, quads: Uint16Array.from(quads) },
+    tables: { paletteSize: n, flags, cullGroup, cubeFaces, quadStart, quads: Uint16Array.from(quads), fluid, fluidApp, fluidMarker },
     registry,
     models,
   };

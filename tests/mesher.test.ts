@@ -112,4 +112,46 @@ describe('mesher', () => {
     expect(aos.has(3)).toBe(true);
     expect([...aos].some((a) => a < 3)).toBe(true);
   });
+
+  describe('liquids', () => {
+    const lavaPal = [S('air'), S('lava', { level: '0' }), S('lava', { level: '2' }), S('stone'), S('water', { level: '0' })];
+
+    it('slopes the surface of flowing liquid towards lower levels, like the game', () => {
+      // Source at x=0, level 2 at x=1, nothing at x=2.
+      const { mesher } = build([3, 1, 1], lavaPal, (x) => (x === 0 ? 1 : x === 1 ? 2 : 0));
+      const out = mesher.mesh(0, 0, 0, [true], null);
+      const v = vertices(out.solid);
+      // First top quad of the flowing block: the quad whose x range is [1, 2] with normal up.
+      const tops: { p: [number, number, number]; n: number }[][] = [];
+      for (let i = 0; i < v.length; i += 4) if (v[i].n === 1) tops.push(v.slice(i, i + 4));
+      const flowing = tops.find((q) => Math.min(...q.map((c) => c.p[0])) === 1 && Math.max(...q.map((c) => c.p[0])) === 2)!;
+      const west = flowing.filter((c) => c.p[0] === 1).map((c) => c.p[1]);
+      const east = flowing.filter((c) => c.p[0] === 2).map((c) => c.p[1]);
+      // Game formula: west corners (9.557 / 13 = 0.735), east corners (0.667 / 3 = 0.222); 1/32 precision.
+      for (const h of west) expect(h).toBeCloseTo(0.735, 1);
+      for (const h of east) expect(h).toBeCloseTo(0.222, 1);
+      expect(Math.min(...west)).toBeGreaterThan(Math.max(...east));
+    });
+
+    it('hides faces between liquid blocks and draws a frame on sources', () => {
+      // Two water sources side by side: 2 tops + 4 frame strips each, 6 outer sides + 2 bottoms; no shared side.
+      const { mesher } = build([2, 1, 1], lavaPal, () => 4);
+      const out = mesher.mesh(0, 0, 0, [true], null);
+      const v = vertices(out.translucent);
+      const normals: number[] = [];
+      for (let i = 0; i < v.length; i += 4) normals.push(v[i].n);
+      expect(normals.filter((n) => n === 1).length).toBe(2 + 8);
+      expect(normals.filter((n) => n === 4 || n === 5).length).toBe(2); // only the outer west and east sides
+      // Flat surface at 8/9 for two sources with air around: corners average with air.
+      expect(out.solid.length).toBe(0);
+    });
+
+    it('fills to the top under the same liquid', () => {
+      const { mesher } = build([1, 2, 1], lavaPal, () => 1);
+      const v = vertices(mesher.mesh(0, 0, 0, [true], null).solid);
+      // Lower block: no top face; its sides reach y = 1.
+      const lowerSides = v.filter((c) => c.n >= 2 && c.p[1] <= 1);
+      expect(Math.max(...lowerSides.map((c) => c.p[1]))).toBe(1);
+    });
+  });
 });

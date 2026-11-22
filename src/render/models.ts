@@ -577,9 +577,10 @@ function torchModel(tex: string, facing?: string): ModelDef {
 }
 
 /**
- * Liquids. Every water (or lava) block uses the same textured model, with the
- * height of its level like in the game; source blocks (level 0) are what you
- * have to place, so they also get a bright frame around the top of the block.
+ * Liquids. The mesher draws them like the game: the surface slopes between
+ * neighbouring levels (see Mesher.emitFluids). Source blocks (level 0) are what
+ * you have to place, so they also get a bright frame on top. The elements below
+ * are only a flat fallback (icons, picking).
  */
 function liquidModel(n: string, level: number): ModelDef {
   const lava = n === 'lava';
@@ -589,7 +590,8 @@ function liquidModel(n: string, level: number): ModelDef {
   if (h < 16) delete el.faces.up?.cull;
   // Hide faces only between liquid blocks of the same height; between different
   // heights the side that sticks out must be drawn, or you can see through it.
-  const opts: Partial<ModelDef> = { layer: lava ? RenderLayer.Solid : RenderLayer.Translucent, cullGroup: `${n}:${h}` };
+  const fluid = { kind: lava ? 'lava' : 'water', level, tex: lava ? 'lava_still' : 'water_still', marker: lava ? 'webmatica_source_lava' : 'webmatica_source_water' } as const;
+  const opts: Partial<ModelDef> = { layer: lava ? RenderLayer.Solid : RenderLayer.Translucent, cullGroup: `${n}:${h}`, fluid };
   if (!source) return model([el], opts);
   delete el.faces.up?.cull;
   // Frame on top of the source block (a pseudo texture with a fixed flat color).
