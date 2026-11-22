@@ -202,3 +202,4 @@ kbd { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; ba
   .topbar { gap: 2px; padding: 6px 4px; }
   .topbar .btn { padding: 4px 7px; }
 }
+.support { margin-top: 6px; }

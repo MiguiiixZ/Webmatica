@@ -6,6 +6,9 @@ import { S } from './strings';
 import type { Tab } from './App';
 import { OfficialTextures } from './OfficialTextures';
 
+/** Optional support link, set at build time (VITE_SUPPORT_URL); hidden when empty. */
+export const SUPPORT_URL = /^https:\/\//.test(import.meta.env.VITE_SUPPORT_URL ?? '') ? import.meta.env.VITE_SUPPORT_URL! : '';
+
 interface Props {
   recent: ProjectState[];
   busy: boolean;
@@ -147,6 +150,15 @@ export function Welcome(p: Props) {
         <div class="footer">
           <div>{S.textureCredit}</div>
           <div>{S.notAffiliated}</div>
+          <div>{S.freeToUse}</div>
+          {SUPPORT_URL && (
+            <div class="support">
+              {S.supportHint}{' '}
+              <a class="btn small" href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">
+                ♥ {S.support}
+              </a>
+            </div>
+          )}
           <div>
             <a href="https://github.com/MiguiiixZ/Webmatica" target="_blank" rel="noopener noreferrer">{S.sourceCode}</a> ·{' '}
             <a href={`${import.meta.env.BASE_URL}LICENSES.txt`} target="_blank" rel="noopener noreferrer">{S.licenses}</a>

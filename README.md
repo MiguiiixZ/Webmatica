@@ -153,6 +153,10 @@ The site is plain static files; no functions, databases or paid services are nee
 4. Click **Save and Deploy**. Every push to the production branch redeploys automatically; other branches get
    preview URLs.
 
+Optional: to show a **Support Webmatica** link (Ko-fi, GitHub Sponsors, Tebex…) on the start screen, add the
+environment variable `VITE_SUPPORT_URL` = `https://…` in **Settings → Variables and Secrets** of the Pages project
+and redeploy. Without it, no link is shown.
+
 `public/_headers` is copied into `dist/` and tells Cloudflare to:
 - send `Cross-Origin-Opener-Policy` / `Cross-Origin-Embedder-Policy`, which lets the mesh workers share block data
   in memory instead of copying it (the app still works without them, it just uses a bit more RAM);
