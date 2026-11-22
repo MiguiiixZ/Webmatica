@@ -3,7 +3,8 @@
 /*
   # Cross-origin isolation lets the mesh workers share block data
   # (SharedArrayBuffer) instead of copying it. The site loads no third-party
-  # resources, so these headers do not block anything.
+  # resources (the optional Mojang textures download uses CORS), so these
+  # headers do not block anything.
   Cross-Origin-Opener-Policy: same-origin
   Cross-Origin-Embedder-Policy: require-corp
   X-Content-Type-Options: nosniff

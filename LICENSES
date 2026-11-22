@@ -10,8 +10,9 @@ Webmatica is not affiliated with, endorsed by or associated with Mojang
 Studios, Microsoft, or the author of Litematica (masa). "Minecraft" is a
 trademark of Mojang Synergies AB. No Mojang textures, models or other game
 assets are included in this repository or on the website. Users may load their
-own client.jar or resource pack; it is processed only in their browser and
-stored only on their device.
+own client.jar or resource pack, or download the official client.jar directly
+from Mojang's servers to their browser; either way it is processed only in
+their browser and stored only on their device.
 
 
 1. Pixel Perfection Community Edition (block textures)

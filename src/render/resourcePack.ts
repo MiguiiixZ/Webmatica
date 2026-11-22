@@ -32,8 +32,12 @@ export const NAMES_KEY = 'stackNames';
 const MAX_TILE = 64;
 
 export function processPackFile(file: File): Promise<ProcessedPack> {
+  return file.arrayBuffer().then((buf) => processPackBytes(new Uint8Array(buf), file.name));
+}
+
+export function processPackBytes(bytes: Uint8Array, name: string): Promise<ProcessedPack> {
   return new Promise((resolve, reject) => {
-    void file.arrayBuffer().then((buf) => {
+    {
       const w = new PackWorker();
       w.onmessage = (e: MessageEvent<{ ok: boolean; pack?: ProcessedPack; message?: string }>) => {
         w.terminate();
@@ -44,9 +48,8 @@ export function processPackFile(file: File): Promise<ProcessedPack> {
         w.terminate();
         reject(new Error(e.message || 'The texture pack could not be read.'));
       };
-      const bytes = new Uint8Array(buf);
-      w.postMessage({ bytes, name: file.name }, [bytes.buffer]);
-    }, reject);
+      w.postMessage({ bytes, name }, [bytes.buffer]);
+    }
   });
 }
 
@@ -182,6 +185,32 @@ export async function addPack(file: File): Promise<PackInfo[]> {
   await restorePack();
   const processed = await processPackFile(file);
   stack.push(processed);
+  await persist();
+  await apply();
+  return getPackInfos();
+}
+
+/** Name prefix of packs downloaded from Mojang (see officialPack.ts). */
+export const OFFICIAL_PREFIX = 'Minecraft ';
+
+export function isOfficialPack(name: string): boolean {
+  return name.startsWith(OFFICIAL_PREFIX);
+}
+
+/**
+ * Downloads the official client.jar from Mojang and puts it at the bottom of the
+ * stack (replacing an earlier download), so resource packs stay on top of it.
+ */
+export async function addOfficialPack(
+  versionId: string | null,
+  onProgress?: (p: { loaded: number; total: number; phase: 'download' | 'process' }) => void,
+): Promise<PackInfo[]> {
+  await restorePack();
+  const { downloadClientJar } = await import('./officialPack');
+  const { bytes, name } = await downloadClientJar(versionId, (p) => onProgress?.({ ...p, phase: 'download' }));
+  onProgress?.({ loaded: 0, total: 0, phase: 'process' });
+  const processed = await processPackBytes(bytes, name);
+  stack = [processed, ...stack.filter((p) => !isOfficialPack(p.name))];
   await persist();
   await apply();
   return getPackInfos();

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { addPack, getPackInfos, movePack, removeAllPacks, removePackAt, restorePack, type PackInfo } from '../render/resourcePack';
 import { S } from './strings';
+import { OfficialTextures } from './OfficialTextures';
+import { isOfficialPack } from '../render/resourcePack';
 
 export function TexturePackSection() {
   const input = useRef<HTMLInputElement>(null);
@@ -60,6 +62,7 @@ export function TexturePackSection() {
           <div class="dim">{S.packBundledLast}</div>
         </>
       )}
+      {!packs.some((p) => isOfficialPack(p.name)) && <OfficialTextures compact onDone={setPacks} />}
       <div class="btn-row">
         <button class="btn small" disabled={busy} onClick={() => input.current?.click()}>
           {busy ? S.packLoading : packs.length ? S.addPack : S.loadPack}

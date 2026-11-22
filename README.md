@@ -88,12 +88,20 @@ the community, licensed **CC BY-SA 4.0** (original artwork; the project tracks a
 copy of Minecraft's textures). Only the block textures are used, repacked into one atlas
 (`public/textures/pixel-perfection/`). Blocks newer than 1.16 that the pack does not cover are shown with flat colors.
 
-To see the original look, open **Settings → Texture pack → Load client.jar or resource pack…** and choose your own
+**Original textures in one click:** the start screen (and **Settings → Texture pack**) has a **Get original textures
+from Mojang** button with a version picker. It downloads the official `client.jar` (about 40 MB) straight from
+Mojang's servers (`piston-meta.mojang.com` / `piston-data.mojang.com`, which allow browser downloads) into your
+browser, the same file the Minecraft launcher downloads, checks its SHA-1 against Mojang's version manifest and
+processes it locally. Only the extracted textures, models and names are kept in IndexedDB. Webmatica never hosts,
+proxies or redistributes Minecraft files. It is meant for players who own Minecraft: Java Edition.
+
+You can also open **Settings → Texture pack → Load client.jar or resource pack…** and choose your own
 Minecraft `client.jar` (e.g. `.minecraft/versions/1.21.1/1.21.1.jar`) or any resource pack `.zip`. It is processed
 entirely in your browser and stored only on your device; Webmatica never uploads or redistributes it. With a
 `client.jar`, real block models and the game's English block names are used too.
 
-Packs can be **stacked** like in the game: load your `client.jar` first, then add resource packs on top. The pack
+Packs can be **stacked** like in the game: load your `client.jar` first (the Mojang download always goes to the
+bottom of the stack), then add resource packs on top. The pack
 on top wins, and anything it does not include comes from the packs below (then from the bundled textures). The start
 screen explains where to find `client.jar` and loads it with one click.
 

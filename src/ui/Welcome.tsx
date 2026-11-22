@@ -4,6 +4,7 @@ import type { ProjectState } from '../app/project';
 import { SUPPORTED_EXTENSIONS } from '../parser/extensions';
 import { S } from './strings';
 import type { Tab } from './App';
+import { OfficialTextures } from './OfficialTextures';
 
 interface Props {
   recent: ProjectState[];
@@ -175,7 +176,9 @@ function VanillaCard() {
         <div class="dim">{S.vanillaLoaded(names)}</div>
       ) : (
         <>
-          <div class="muted" style={{ margin: '4px 0 6px' }}>{S.vanillaText}</div>
+          <div class="muted" style={{ margin: '4px 0 8px' }}>{S.vanillaText}</div>
+          <OfficialTextures onDone={(packs) => setNames(packs.map((x) => x.name).join(' + '))} />
+          <div class="dim" style={{ marginTop: 10 }}>{S.vanillaOr}</div>
           <div class="dim">{S.vanillaWhere}</div>
           <dl class="kv dim" style={{ margin: '4px 0 8px' }}>
             {S.vanillaPaths.map(([os, path]) => (
@@ -185,7 +188,7 @@ function VanillaCard() {
               </>
             ))}
           </dl>
-          <button class="btn" disabled={busy} onClick={() => input.current?.click()}>
+          <button class="btn small" disabled={busy} onClick={() => input.current?.click()}>
             {busy ? S.packLoading : S.vanillaButton}
           </button>
           {error && <div class="err">{error}</div>}
