@@ -83,17 +83,22 @@ automatically, for both `.litematic` and `.nbt`. The format is detected from the
 
 ## Textures
 
-The default textures are from **[Pixel Perfection CE](https://github.com/Athemis/PixelPerfectionCE)** by XSSheep and
+The bundled fallback textures (used offline and until the Mojang download finishes) are from **[Pixel Perfection CE](https://github.com/Athemis/PixelPerfectionCE)** by XSSheep and
 the community, licensed **CC BY-SA 4.0** (original artwork; the project tracks and removes any file found to be a
 copy of Minecraft's textures). Only the block textures are used, repacked into one atlas
 (`public/textures/pixel-perfection/`). Blocks newer than 1.16 that the pack does not cover are shown with flat colors.
 
-**Original textures in one click:** the start screen (and **Settings → Texture pack**) has a **Get original textures
-from Mojang** button with a version picker. It downloads the official `client.jar` (about 40 MB) straight from
-Mojang's servers (`piston-meta.mojang.com` / `piston-data.mojang.com`, which allow browser downloads) into your
-browser, the same file the Minecraft launcher downloads, checks its SHA-1 against Mojang's version manifest and
-processes it locally. Only the extracted textures, models and names are kept in IndexedDB. Webmatica never hosts,
-proxies or redistributes Minecraft files. It is meant for players who own Minecraft: Java Edition.
+**Original textures out of the box:** on first start, Webmatica downloads the block textures, block models and
+block states of the latest release's official `client.jar` straight from Mojang's servers
+(`piston-meta.mojang.com` / `piston-data.mojang.com`, which allow browser downloads) into your browser. HTTP range
+requests fetch only the needed parts of the jar: about **4 MB** instead of 40 MB (measured: 3.9 MB in 7 requests
+for 26.3). If ranges are not available, the whole jar is downloaded and checked against the SHA-1 in Mojang's
+version manifest. Everything is processed locally and kept in IndexedDB, so it happens once per device; the bundled
+textures are shown until it finishes, and if you are offline. Webmatica never hosts, proxies or redistributes
+Minecraft files. It is meant for players who own Minecraft: Java Edition.
+
+If you remove the Mojang textures in **Settings → Texture pack**, they are not downloaded again; the same section
+(and the start screen) has a **Get original textures from Mojang** button with a version picker (1.14 and newer).
 
 You can also open **Settings → Texture pack → Load client.jar or resource pack…** and choose your own
 Minecraft `client.jar` (e.g. `.minecraft/versions/1.21.1/1.21.1.jar`) or any resource pack `.zip`. It is processed

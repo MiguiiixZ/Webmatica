@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import type { PackInfo } from '../render/resourcePack';
+import { addOfficialPack, getOfficialStatus, onOfficialStatus, type OfficialStatus, type PackInfo } from '../render/resourcePack';
 import { S } from './strings';
 
 /**
@@ -9,8 +9,10 @@ import { S } from './strings';
 export function OfficialTextures({ onDone, compact }: { onDone?: (packs: PackInfo[]) => void; compact?: boolean }) {
   const [versions, setVersions] = useState<string[]>([]);
   const [version, setVersion] = useState<string>('');
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [st, setSt] = useState<OfficialStatus>(getOfficialStatus());
+  useEffect(() => onOfficialStatus(setSt), []);
+  const busy = st.phase === 'download' ? (st.total ? S.officialDownloading(st.loaded / 1048576, st.total / 1048576) : S.officialConnecting) : st.phase === 'process' ? S.officialProcessing : null;
+  const error = st.phase === 'error' ? `${S.officialError}: ${st.error ?? ''}` : null;
 
   useEffect(() => {
     let live = true;
@@ -29,21 +31,11 @@ export function OfficialTextures({ onDone, compact }: { onDone?: (packs: PackInf
     };
   }, []);
 
-  const start = async () => {
-    setBusy(S.officialConnecting);
-    setError(null);
-    try {
-      const m = await import('../render/resourcePack');
-      const packs = await m.addOfficialPack(version || null, (p) => {
-        if (p.phase === 'process') setBusy(S.officialProcessing);
-        else setBusy(S.officialDownloading(p.loaded / 1048576, p.total / 1048576));
-      });
-      onDone?.(packs);
-    } catch (e) {
-      setError(`${S.officialError}: ${(e as Error).message}`);
-    } finally {
-      setBusy(null);
-    }
+  const start = () => {
+    addOfficialPack(version || null).then(
+      (packs) => onDone?.(packs),
+      () => undefined, // shown through the status
+    );
   };
 
   return (

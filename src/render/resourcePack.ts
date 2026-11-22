@@ -197,28 +197,85 @@ export function isOfficialPack(name: string): boolean {
   return name.startsWith(OFFICIAL_PREFIX);
 }
 
+/** Set when the user removed the Mojang textures, so they are not downloaded again automatically. */
+const OFFICIAL_OFF_KEY = 'officialOff';
+
+export interface OfficialStatus {
+  phase: 'idle' | 'download' | 'process' | 'error';
+  loaded: number;
+  total: number;
+  error?: string;
+}
+
+let officialStatus: OfficialStatus = { phase: 'idle', loaded: 0, total: 0 };
+const officialListeners = new Set<(s: OfficialStatus) => void>();
+let officialRun: Promise<PackInfo[]> | null = null;
+
+function setOfficialStatus(s: OfficialStatus): void {
+  officialStatus = s;
+  for (const l of officialListeners) l(s);
+}
+
+export function getOfficialStatus(): OfficialStatus {
+  return officialStatus;
+}
+
+export function onOfficialStatus(fn: (s: OfficialStatus) => void): () => void {
+  officialListeners.add(fn);
+  return () => officialListeners.delete(fn);
+}
+
 /**
- * Downloads the official client.jar from Mojang and puts it at the bottom of the
- * stack (replacing an earlier download), so resource packs stay on top of it.
+ * Downloads the textures of the official client.jar from Mojang and puts them at
+ * the bottom of the stack (replacing an earlier download), so resource packs stay on top.
  */
-export async function addOfficialPack(
-  versionId: string | null,
-  onProgress?: (p: { loaded: number; total: number; phase: 'download' | 'process' }) => void,
-): Promise<PackInfo[]> {
-  await restorePack();
-  const { downloadClientJar } = await import('./officialPack');
-  const { bytes, name } = await downloadClientJar(versionId, (p) => onProgress?.({ ...p, phase: 'download' }));
-  onProgress?.({ loaded: 0, total: 0, phase: 'process' });
-  const processed = await processPackBytes(bytes, name);
-  stack = [processed, ...stack.filter((p) => !isOfficialPack(p.name))];
-  await persist();
-  await apply();
-  return getPackInfos();
+export function addOfficialPack(versionId: string | null): Promise<PackInfo[]> {
+  officialRun ??= (async () => {
+    try {
+      await restorePack();
+      setOfficialStatus({ phase: 'download', loaded: 0, total: 0 });
+      const { downloadClientJar } = await import('./officialPack');
+      const { bytes, name } = await downloadClientJar(versionId, (p) => setOfficialStatus({ phase: 'download', ...p }));
+      setOfficialStatus({ phase: 'process', loaded: 0, total: 0 });
+      const processed = await processPackBytes(bytes, name);
+      stack = [processed, ...stack.filter((p) => !isOfficialPack(p.name))];
+      await persist();
+      await db.delete('packs', OFFICIAL_OFF_KEY).catch(() => undefined);
+      await apply();
+      setOfficialStatus({ phase: 'idle', loaded: 0, total: 0 });
+      return getPackInfos();
+    } catch (e) {
+      setOfficialStatus({ phase: 'error', loaded: 0, total: 0, error: (e as Error).message });
+      throw e;
+    } finally {
+      officialRun = null;
+    }
+  })();
+  return officialRun;
+}
+
+/**
+ * Original textures out of the box: on first start, download them from Mojang in the
+ * background (about 5 MB, once). Skipped if they are already stored or the user removed them.
+ */
+export async function ensureOfficialTextures(): Promise<void> {
+  try {
+    await restorePack();
+    if (stack.some((p) => isOfficialPack(p.name)) || officialRun) return;
+    if (await db.get<boolean>('packs', OFFICIAL_OFF_KEY).catch(() => false)) return;
+    await addOfficialPack(null);
+  } catch {
+    // Offline or blocked: the bundled textures are used and Settings offers a retry.
+  }
+}
+
+async function rememberOfficialRemoved(removed: ProcessedPack[]): Promise<void> {
+  if (removed.some((p) => isOfficialPack(p.name))) await db.put('packs', OFFICIAL_OFF_KEY, true).catch(() => undefined);
 }
 
 /** Removes a pack; `topIndex` counts from the top of the stack. */
 export async function removePackAt(topIndex: number): Promise<PackInfo[]> {
-  stack.splice(stack.length - 1 - topIndex, 1);
+  await rememberOfficialRemoved(stack.splice(stack.length - 1 - topIndex, 1));
   await persist();
   await apply();
   return getPackInfos();
@@ -236,6 +293,7 @@ export async function movePack(topIndex: number, delta: -1 | 1): Promise<PackInf
 }
 
 export async function removeAllPacks(): Promise<void> {
+  await rememberOfficialRemoved(stack);
   stack = [];
   await db.delete('packs', STACK_KEY);
   await db.delete('packs', NAMES_KEY);

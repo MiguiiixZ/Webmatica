@@ -5,6 +5,7 @@ import { SUPPORTED_EXTENSIONS } from '../parser/extensions';
 import { S } from './strings';
 import type { Tab } from './App';
 import { OfficialTextures } from './OfficialTextures';
+import { onPackChange } from '../render/packManager';
 
 /** Optional support link, set at build time (VITE_SUPPORT_URL); hidden when empty. */
 export const SUPPORT_URL = /^https:\/\//.test(import.meta.env.VITE_SUPPORT_URL ?? '') ? import.meta.env.VITE_SUPPORT_URL! : '';
@@ -171,15 +172,17 @@ export function Welcome(p: Props) {
   );
 }
 
-/** Explains how to get the original look with the user's own client.jar (loaded lazily). */
+/** Shows which textures are used; offers the Mojang download (if it did not happen automatically) or a local client.jar. */
 function VanillaCard() {
   const input = useRef<HTMLInputElement>(null);
   const [names, setNames] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    // Only the names: the packs themselves are loaded when a schematic is opened.
-    void db.get<string[]>('packs', 'stackNames').then((n) => setNames(n?.length ? n.slice().reverse().join(' + ') : null));
+    const refresh = () => void db.get<string[]>('packs', 'stackNames').then((n) => setNames(n?.length ? n.slice().reverse().join(' + ') : null));
+    refresh();
+    // Updates when the automatic Mojang download (or any pack change) finishes.
+    return onPackChange(refresh);
   }, []);
   return (
     <div class="recent-item" style={{ display: 'block' }}>

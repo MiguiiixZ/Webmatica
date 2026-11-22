@@ -32,6 +32,8 @@ export function App() {
       const saved = await db.get<Partial<RenderSettings>>('settings', 'render');
       if (saved) setSettingsState({ ...defaultRenderSettings(), ...saved });
       setRecent(await listProjects());
+      // Original textures out of the box (downloaded once from Mojang, in the background).
+      void import('../render/resourcePack').then((m) => m.ensureOfficialTextures());
     })();
   }, []);
 
